@@ -28,59 +28,77 @@ class Particle {
     // 随机角度
     this.angle = Math.random() * Math.PI * 2;
     // 较小的初始半径
-    this.radius = Math.random() * 15 + 5;
+    this.radius = Math.random() * 15 + 5; // 缩小初始半径
     // 最大半径（扩散用）
-    this.maxRadius = Math.random() * 80 + 30;
-    // 扩散速率
-    this.expandSpeed = Math.random() * 0.4 + 0.2;
-    // 旋转速度
-    this.rotateSpeed = (Math.random() * 2 - 1) * 0.015;
+    this.maxRadius = Math.random() * 60 + 30; // 调整最大半径
+    // 扩散速率 - 不同粒子有不同扩散速度
+    this.expandSpeed = Math.random() * 0.3 + 0.1;
+    // 旋转速度 - 增加旋转以模拟湍流
+    this.rotateSpeed = (Math.random() * 2 - 1) * 0.02;
     // 粒子大小
-    this.size = Math.random() * 18 + 3;
-    // 彩虹颜色
-    this.hue = Math.random() * 360;
-    this.hueSpeed = Math.random() * 1 + 0.2;
-    // 随机偏移
-    this.offsetX = (Math.random() - 0.5) * 30;
-    this.offsetY = (Math.random() - 0.5) * 30;
-    // 上升速度
-    this.riseSpeed = Math.random() * 0.8 + 0.1;
+    this.size = Math.random() * 15 + 3;
+    // 彩虹颜色 - 调整色相范围使其更像烟雾
+    this.hue = Math.random() * 60 + 200; // 更多的蓝紫色调
+    this.hueSpeed = Math.random() * 0.5 + 0.1;
+    // 随机偏移 - 增加随机性
+    this.offsetX = (Math.random() - 0.5) * 40;
+    this.offsetY = (Math.random() - 0.5) * 40;
+    // 上升速度 - 烟雾应该有不同的上升速度
+    this.riseSpeed = Math.random() * 1.2 + 0.3;
     // 生命周期
-    this.life = Math.random() * 0.8 + 0.3;
+    this.life = Math.random() * 0.7 + 0.3;
     this.maxLife = this.life;
     // 初始位置（靠近鼠标）
-    this.x = mouse.x + (Math.random() - 0.5) * 15;
-    this.y = mouse.y + (Math.random() - 0.5) * 15;
-    // 透明度
-    this.alpha = Math.random() * 0.7 + 0.2;
+    this.x = mouse.x + (Math.random() - 0.5) * 20;
+    this.y = mouse.y + (Math.random() - 0.5) * 20;
+    // 透明度 - 降低以符合烟雾特性
+    this.alpha = Math.random() * 0.5 + 0.1;
     // 轨迹记录
     this.trail = [];
-    this.trailLength = Math.floor(Math.random() * 4) + 3;
-    // 添加脉动效果
-    this.pulse = Math.random() * 0.1 + 0.05;
+    this.trailLength = Math.floor(Math.random() * 3) + 2; // 减少轨迹长度
+    // 脉动效果 - 减弱以减少气球感
+    this.pulse = Math.random() * 0.05 + 0.02;
     this.pulseAngle = 0;
     
-    // 新增：粒子的目标点，与鼠标位置有一定距离
+    // 添加不规则变形效果
+    this.deformFactor = Math.random() * 0.3 + 0.1;
+    this.deformAngle = Math.random() * Math.PI * 2;
+    this.deformSpeed = (Math.random() * 2 - 1) * 0.02;
+    
+    // 新增：粒子的目标点
     const randomAngle = Math.random() * Math.PI * 2;
-    const randomDistance = Math.random() * 100 + 50; // 50-150像素的随机距离
+    const randomDistance = Math.random() * 100 + 50;
     this.targetX = this.x + Math.cos(randomAngle) * randomDistance;
-    this.targetY = this.y + Math.sin(randomAngle) * randomDistance;
+    this.targetY = this.y + Math.sin(randomAngle) * randomDistance - 50; // 向上偏移，模拟上升
     
     // 新增：粒子移动速度
-    this.speed = Math.random() * 1 + 0.5;
+    this.speed = Math.random() * 0.8 + 0.3; // 降低速度使运动更像烟雾
     
     // 新增：接近鼠标时的淡出距离
-    this.fadeDistance = Math.random() * 40 + 60; // 60-100像素开始淡出
+    this.fadeDistance = Math.random() * 40 + 60;
+    
+    // 添加湍流效果
+    this.turbulenceAmplitude = Math.random() * 0.8 + 0.2;
+    this.turbulenceFrequency = Math.random() * 0.1 + 0.05;
+    this.turbulencePhase = Math.random() * Math.PI * 2;
   }
 
   update() {
-    // 扩散效果
-    this.radius = Math.min(this.radius + this.expandSpeed, this.maxRadius);
+    // 扩散效果 - 使扩散速度随时间变化
+    this.radius = Math.min(this.radius + this.expandSpeed * (0.8 + 0.4 * (1 - this.life/this.maxLife)), this.maxRadius);
     
-    // 添加脉动效果
+    // 添加脉动效果 - 减弱
     this.pulseAngle += 0.1;
     const pulseEffect = Math.sin(this.pulseAngle) * this.pulse;
-    const currentRadius = this.radius * (1 + pulseEffect);
+    
+    // 添加变形和湍流
+    this.deformAngle += this.deformSpeed;
+    const deformEffect = Math.sin(this.deformAngle) * this.deformFactor;
+    
+    // 湍流效果计算
+    this.turbulencePhase += this.turbulenceFrequency;
+    const turbulenceX = Math.sin(this.turbulencePhase) * this.turbulenceAmplitude;
+    const turbulenceY = Math.cos(this.turbulencePhase * 1.3) * this.turbulenceAmplitude;
     
     // 计算到鼠标的距离
     const dx = this.x - mouse.x;
@@ -95,28 +113,27 @@ class Particle {
     // 根据效果可见性状态调整行为
     if (!isEffectVisible) {
       // 如果效果不可见（鼠标停止移动），增加淡出距离和速度
-      this.fadeDistance = Math.max(this.fadeDistance, 150); // 增大淡出距离
-      this.speed = Math.max(this.speed, 1.5); // 确保有足够的速度离开
+      this.fadeDistance = Math.max(this.fadeDistance, 150);
       
       // 如果距离鼠标太近，重新设置目标点
       if (distanceToMouse < 100 && Math.random() < 0.1) {
         const escapeAngle = Math.atan2(dy, dx);
         const escapeDistance = 200 + Math.random() * 150;
         this.targetX = mouse.x + Math.cos(escapeAngle) * escapeDistance;
-        this.targetY = mouse.y + Math.sin(escapeAngle) * escapeDistance;
+        this.targetY = mouse.y + Math.sin(escapeAngle) * escapeDistance - 50; // 向上偏移
       }
     }
     
-    // 只有当距离不太小时才移动粒子（避免抖动）
+    // 只有当距离不太小时才移动粒子
     if (targetDistance > 1) {
-      // 移动向目标点
-      this.x += (targetDx / targetDistance) * this.speed;
-      this.y += (targetDy / targetDistance) * this.speed;
+      // 移动向目标点，但加入湍流效果
+      this.x += (targetDx / targetDistance) * this.speed + turbulenceX;
+      this.y += (targetDy / targetDistance) * this.speed + turbulenceY;
     }
     
-    // 额外的飘动效果
-    this.y -= this.riseSpeed * (1 + pulseEffect * 0.5);
-    this.x += Math.sin(this.angle) * 0.5;
+    // 上升和飘动效果 - 增强上升感
+    this.y -= this.riseSpeed * (1.2 - this.life/this.maxLife); // 随生命周期加速上升
+    this.x += Math.sin(this.angle) * 0.5 + deformEffect * 0.3;
     this.angle += this.rotateSpeed;
     
     // 基于与鼠标的距离计算透明度
@@ -127,25 +144,29 @@ class Particle {
       fadeAlpha = this.alpha * fadeRatio * fadeRatio;
     }
     
-    // 记录轨迹
+    // 根据生命周期调整透明度 - 烟雾应该逐渐消散
+    fadeAlpha *= Math.pow(this.life / this.maxLife, 1.5);
+    
+    // 记录轨迹 - 使轨迹更自然
     this.trail.unshift({ 
       x: this.x, 
       y: this.y, 
-      radius: currentRadius, 
+      radius: this.radius * (1 + deformEffect), // 添加变形因子
       hue: this.hue,
-      alpha: fadeAlpha * (this.life / this.maxLife)
+      alpha: fadeAlpha,
+      deform: deformEffect // 保存变形值用于绘制
     });
     
     if (this.trail.length > this.trailLength) {
       this.trail.pop();
     }
     
-    // 颜色变化
-    this.hue += this.hueSpeed;
+    // 颜色变化 - 减缓变化速度
+    this.hue += this.hueSpeed * 0.7;
     if (this.hue > 360) this.hue -= 360;
     
-    // 生命周期 - 增加鼠标停止时的衰减速度
-    const lifeDelta = 0.008 + (1 - (this.life / this.maxLife)) * 0.01;
+    // 生命周期 - 调整衰减速度
+    const lifeDelta = 0.008 + (1 - (this.life / this.maxLife)) * 0.012;
     this.life -= isEffectVisible ? lifeDelta : lifeDelta * 1.5;
     
     if (this.life <= 0) {
@@ -162,7 +183,7 @@ class Particle {
     
     let alpha = (this.life / this.maxLife) * this.alpha;
     if (distanceToMouse < this.fadeDistance) {
-      // 越接近鼠标越透明，使用二次方公式增强淡出效果
+      // 越接近鼠标越透明
       const fadeRatio = distanceToMouse / this.fadeDistance;
       alpha = alpha * fadeRatio * fadeRatio;
     }
@@ -172,62 +193,88 @@ class Particle {
       return;
     }
     
-    // 绘制轨迹 - 增强效果
+    // 绘制轨迹 - 使轨迹更加模糊和不规则
     for (let i = 1; i < this.trail.length; i++) {
       const point = this.trail[i];
-      // 进一步降低轨迹的透明度
+      // 降低轨迹的透明度
       const prevAlpha = isEffectVisible ? 
-                        point.alpha * (1 - i / this.trail.length) : 
-                        point.alpha * (1 - i / this.trail.length) * 0.7;
+                        point.alpha * (1 - i / this.trail.length) * 0.8 : 
+                        point.alpha * (1 - i / this.trail.length) * 0.5;
       
       // 如果透明度太低，跳过绘制
       if (prevAlpha < 0.02) continue;
       
+      // 使用椭圆而不是圆形 - 增加不规则感
+      const radiusX = point.radius * (1 + point.deform * 0.5);
+      const radiusY = point.radius * (1 - point.deform * 0.3);
+      
       const gradient = ctx.createRadialGradient(
         point.x, point.y, 0,
-        point.x, point.y, point.radius
+        point.x, point.y, Math.max(radiusX, radiusY)
       );
       
-      // 更丰富的颜色渐变
-      gradient.addColorStop(0, `hsla(${point.hue}, 100%, 75%, ${prevAlpha * 0.6})`);
-      gradient.addColorStop(0.5, `hsla(${(point.hue + 30) % 360}, 100%, 65%, ${prevAlpha * 0.3})`);
-      gradient.addColorStop(1, `hsla(${(point.hue + 60) % 360}, 100%, 50%, 0)`);
+      // 更柔和的颜色渐变 - 更像烟雾
+      gradient.addColorStop(0, `hsla(${point.hue}, 70%, 80%, ${prevAlpha * 0.5})`);
+      gradient.addColorStop(0.4, `hsla(${(point.hue + 15) % 360}, 60%, 70%, ${prevAlpha * 0.3})`);
+      gradient.addColorStop(0.7, `hsla(${(point.hue + 30) % 360}, 50%, 60%, ${prevAlpha * 0.1})`);
+      gradient.addColorStop(1, `hsla(${(point.hue + 45) % 360}, 40%, 50%, 0)`);
       
       ctx.fillStyle = gradient;
+      
+      // 使用不规则形状
       ctx.beginPath();
-      ctx.arc(point.x, point.y, point.radius * 0.85, 0, Math.PI * 2);
+      ctx.ellipse(
+        point.x, point.y, 
+        radiusX * 0.9, radiusY * 0.9, 
+        this.angle + point.deform, 0, Math.PI * 2
+      );
       ctx.fill();
     }
     
-    // 创建径向渐变（烟雾效果增强）
+    // 创建径向渐变 - 更柔和的烟雾效果
     const gradient = ctx.createRadialGradient(
       this.x, this.y, 0,
       this.x, this.y, this.radius
     );
     
-    // 更丰富的颜色渐变
-    gradient.addColorStop(0, `hsla(${this.hue}, 100%, 75%, ${alpha * 1.2})`);
-    gradient.addColorStop(0.4, `hsla(${(this.hue + 20) % 360}, 100%, 65%, ${alpha * 0.6})`);
-    gradient.addColorStop(0.7, `hsla(${(this.hue + 40) % 360}, 100%, 55%, ${alpha * 0.3})`);
-    gradient.addColorStop(1, `hsla(${(this.hue + 60) % 360}, 100%, 50%, 0)`);
+    // 更像烟雾的颜色渐变
+    gradient.addColorStop(0, `hsla(${this.hue}, 70%, 85%, ${alpha * 0.8})`);
+    gradient.addColorStop(0.3, `hsla(${(this.hue + 15) % 360}, 60%, 75%, ${alpha * 0.5})`);
+    gradient.addColorStop(0.6, `hsla(${(this.hue + 30) % 360}, 50%, 65%, ${alpha * 0.3})`);
+    gradient.addColorStop(0.8, `hsla(${(this.hue + 45) % 360}, 40%, 55%, ${alpha * 0.1})`);
+    gradient.addColorStop(1, `hsla(${(this.hue + 60) % 360}, 30%, 45%, 0)`);
     
-    // 绘制烟雾粒子
+    // 绘制烟雾粒子 - 使用椭圆而不是圆形
     ctx.fillStyle = gradient;
+    
+    // 计算变形效果
+    const deformEffect = Math.sin(this.deformAngle) * this.deformFactor;
+    const radiusX = this.radius * (1 + deformEffect * 0.5);
+    const radiusY = this.radius * (1 - deformEffect * 0.3);
+    
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.ellipse(
+      this.x, this.y, 
+      radiusX, radiusY, 
+      this.angle + deformEffect, 0, Math.PI * 2
+    );
     ctx.fill();
     
-    // 添加内部高光点
+    // 添加更柔和的内部高光
     const innerGlow = ctx.createRadialGradient(
       this.x, this.y, 0,
-      this.x, this.y, this.radius * 0.3
+      this.x, this.y, this.radius * 0.2
     );
-    innerGlow.addColorStop(0, `hsla(${this.hue - 40}, 100%, 90%, ${alpha * 0.8})`);
-    innerGlow.addColorStop(1, `hsla(${this.hue}, 100%, 80%, 0)`);
+    innerGlow.addColorStop(0, `hsla(${this.hue - 20}, 60%, 95%, ${alpha * 0.6})`);
+    innerGlow.addColorStop(1, `hsla(${this.hue}, 50%, 85%, 0)`);
     
     ctx.fillStyle = innerGlow;
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius * 0.3, 0, Math.PI * 2);
+    ctx.ellipse(
+      this.x, this.y, 
+      radiusX * 0.25, radiusY * 0.25, 
+      this.angle, 0, Math.PI * 2
+    );
     ctx.fill();
   }
 }
@@ -350,25 +397,25 @@ function animate() {
       Math.pow(targetMouse.y - lastMouse.y, 2)
     );
     
-    // 根据鼠标移动速度调整粒子生成概率
-    const spawnRate = Math.min(0.5, 0.2 + distance * 0.01);
+    // 根据鼠标移动速度调整粒子生成概率，但增加基础生成率
+    const spawnRate = Math.min(0.6, 0.3 + distance * 0.015);
     
     if (Math.random() < spawnRate) {
-      // 在鼠标位置生成粒子
+      // 在鼠标位置生成粒子，并随机添加偏移
       particles.push(new Particle());
     }
   }
   
   // 当效果不可见时，逐渐减少粒子数量
   if (!isEffectVisible && particles.length > 0) {
-    // 每帧移除一部分粒子，使效果逐渐消失
-    if (Math.random() < 0.1) {
+    // 加快粒子消失的速度
+    if (Math.random() < 0.15) {
       particles.shift();
     }
   }
   
-  // 增加最大粒子数量
-  const maxParticles = 65; // 增加粒子数上限
+  // 增加最大粒子数量，但不要太多以避免性能问题
+  const maxParticles = 60;
   while (particles.length > maxParticles) {
     particles.shift();
   }

@@ -118,10 +118,10 @@ export default {
 
     // giscus配置
     giscusTalk({
-      repo: 'Yiov/vitepress-doc', //仓库
-      repoId: 'R_kgDOGYFl1A', //仓库ID
+      repo: 'GodX-18/blog', //仓库
+      repoId: 'R_kgDOOQJCkQ', //仓库ID
       category: 'General', // 讨论分类
-      categoryId: 'DIC_kwDOGYFl1M4CayLN', //讨论分类ID
+      categoryId: 'DIC_kwDOOQJCkc4CokJM', //讨论分类ID
       mapping: 'pathname',
       inputPosition: 'bottom',
       lang: 'zh-CN',
