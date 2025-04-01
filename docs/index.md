@@ -11,16 +11,16 @@ hero:
   image:
     src: /logo.png
     alt: VitePress
-  actions:
-    - theme: brand
-      text: 开始
-      link: /getting-started
-    - theme: alt
-      text: GitHub
-      link: https://github.com/Yiov/vitepress-doc
-    - theme: sponsor
-      text: 搭建导航
-      link: /nav/
+  # actions:
+  #   - theme: brand
+  #     text: 开始
+  #     link: /getting-started
+  #   - theme: alt
+  #     text: GitHub
+  #     link: https://github.com/Yiov/vitepress-doc
+  #   - theme: sponsor
+  #     text: 搭建导航
+  #     link: /nav/
 
 features:
   - icon: 📝
