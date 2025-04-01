@@ -3,6 +3,8 @@ import { defineConfig } from "vitepress";
 import markdownItTaskCheckbox from "markdown-it-task-checkbox";
 import { groupIconMdPlugin, groupIconVitePlugin, localIconLoader } from "vitepress-plugin-group-icons";
 import { MermaidMarkdown, MermaidPlugin } from "vitepress-plugin-mermaid";
+import UnoCSS from 'unocss/vite'
+
 
 export default defineConfig({
   lang: "zh-CN",
@@ -69,6 +71,7 @@ export default defineConfig({
       open: false
     },
     plugins: [
+      UnoCSS(),
       groupIconVitePlugin({
         customIcon: {
           ts: localIconLoader(import.meta.url, "../public/svg/typescript.svg"), //本地ts图标导入
