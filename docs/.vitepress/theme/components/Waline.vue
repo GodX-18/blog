@@ -17,6 +17,6 @@ const option = computed(() => ({
   comment: true,
   copyright: false,
   pageview: true,
-  reaction: false
+  reaction: true
 }));
 </script>

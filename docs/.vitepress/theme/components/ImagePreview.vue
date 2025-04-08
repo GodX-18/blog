@@ -11,10 +11,16 @@ const previewImageInfo = reactive<{ url: string; list: string[]; idx: number }>(
 function previewImage(e: Event) {
   const target = e.target as HTMLElement;
   const currentTarget = e.currentTarget as HTMLElement;
-  const blackList = ["wl-gallery-item","wl-reaction-item"];
-  console.log(target);
+  const blackList = ["wl-gallery-item","wl-reaction-item","wl-tab-wrapper"];
   
-  if (blackList.includes(target.className)) {
+  // 检查目标元素及其父级是否在黑名单中
+  const isInBlackList = (element: HTMLElement): boolean => {
+    if (!element || element === currentTarget) return false;
+    if (blackList.includes(element.className)) return true;
+    return isInBlackList(element.parentElement as HTMLElement);
+  };
+
+  if (isInBlackList(target)) {
     return;
   }
   if (target.tagName.toLowerCase() === "img") {
