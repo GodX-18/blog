@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { slugify } from '@mdit-vue/shared'
+import { computed } from "vue";
+import { slugify } from "@mdit-vue/shared";
 
-import MNavLink from './MNavLink.vue'
-import type { NavLink } from '../untils/types'
+import MNavLink from "./MNavLink.vue";
+import type { NavLink } from "../untils/types";
 
 const props = defineProps<{
-  title: string
-  noIcon?: boolean
-  items: NavLink[]
-}>()
+  title: string;
+  noIcon?: boolean;
+  items: NavLink[];
+}>();
 
 const formatTitle = computed(() => {
-  return slugify(props.title)
-})
+  return slugify(props.title);
+});
 </script>
 
 <template>
-  <h2 v-if="title" :id="formatTitle" tabindex="-1">
+  <h3 v-if="title" :id="formatTitle" tabindex="-1">
     {{ title }}
     <a class="header-anchor" :href="`#${formatTitle}`" aria-hidden="true"></a>
-  </h2>
+  </h3>
   <div class="m-nav-links">
     <MNavLink v-for="item in items" :noIcon="noIcon" v-bind="item" />
   </div>

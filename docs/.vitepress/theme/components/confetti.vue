@@ -4,38 +4,38 @@ import { inBrowser } from "vitepress";
 
 
 if (inBrowser) {
-  const end = Date.now() + 10 * 1000;
+  var duration = 15 * 1000;
+var animationEnd = Date.now() + duration;
+var skew = 1;
 
-  // go Buckeyes!
-  const colors = [
-    "#ff0000", // Red
-    "#ffa500", // Orange
-    "#ffff00", // Yellow
-    "#008000", // Green
-    "#0000ff", // Blue
-    "#4b0082", // Indigo
-    "#ee82ee"  // Violet
-  ];
+function randomInRange(min, max) {
+  return Math.random() * (max - min) + min;
+}
 
-  (function frame() {
-    confetti({
-      particleCount: 2,
-      angle: 60,
-      spread: 55,
-      origin: { x: 0 },
-    //   colors: colors
-    });
-    confetti({
-      particleCount: 2,
-      angle: 120,
-      spread: 55,
-      origin: { x: 1 },
-    //   colors: colors
-    });
+(function frame() {
+  var timeLeft = animationEnd - Date.now();
+  var ticks = Math.max(200, 500 * (timeLeft / duration));
+  skew = Math.max(0.8, skew - 0.001);
 
-    if (Date.now() < end) {
-      requestAnimationFrame(frame);
-    }
-  })();
+  confetti({
+    particleCount: 1,
+    startVelocity: 0,
+    ticks: ticks,
+    origin: {
+      x: Math.random(),
+      // since particles fall down, skew start toward the top
+      y: (Math.random() * skew) - 0.2
+    },
+    colors: ['#ffffff', '#88C0D0', '#81A1C1', '#5E81AC', '#B48EAD'],
+    shapes: ['circle', 'star'],
+    gravity: randomInRange(0.2, 0.4),
+    scalar: randomInRange(0.6, 1.2),
+    drift: randomInRange(-0.2, 0.2)
+  });
+
+  if (timeLeft > 0) {
+    requestAnimationFrame(frame);
+  }
+}());
 }
 </script>

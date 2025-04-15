@@ -108,13 +108,14 @@ const formatBadge = computed(() => {
 }
 
 .m-nav-link .icon svg {
-  width: var(--m-nav-icon-size);
+  height: var(--m-nav-icon-size);
   fill: currentColor;
 }
 
 .m-nav-link .icon img {
   border-radius: 4px;
-  width: var(--m-nav-icon-size);
+  /* width: var(--m-nav-icon-size); */
+  height: var(--m-nav-icon-size);
 }
 
 

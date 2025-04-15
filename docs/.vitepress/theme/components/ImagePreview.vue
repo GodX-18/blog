@@ -11,7 +11,7 @@ const previewImageInfo = reactive<{ url: string; list: string[]; idx: number }>(
 function previewImage(e: Event) {
   const target = e.target as HTMLElement;
   const currentTarget = e.currentTarget as HTMLElement;
-  const blackList = ["wl-gallery-item","wl-reaction-item","wl-tab-wrapper"];
+  const blackList = ["wl-gallery-item","wl-reaction","wl-tab-wrapper","wl-comment"];
   
   // 检查目标元素及其父级是否在黑名单中
   const isInBlackList = (element: HTMLElement): boolean => {
