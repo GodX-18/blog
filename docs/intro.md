@@ -2,8 +2,8 @@
 import { SKILLS_DATA } from '/.vitepress/theme/untils/data'
 </script>
 
-
 # 关于我
+
 ## 不止步于前端
 
 在过去的几年里，我都作为一个纯前端，来完成各种各样的脑洞和有趣的事情。而一个系统的架构，除去前端之外，还有千千万万的方案设计和架构是我所不知道的。广度和深度，总会作为大家的艰难抉择。
@@ -44,7 +44,6 @@ PMP认证是由美国项目管理协会（ProjectManagementInstitute，PMI）发
 
 我坚信，人生的意义在于不断地成为更好的自己。无论是在技术上的精进，还是在个人成长上的努力，我都致力于每天都有所进步。
 
-
 ## 我的梦想
 
 我梦想着创建能够触动人心的产品，不仅仅是技术上的创新，更是在情感上与用户产生共鸣。我希望通过我的工作，能够让这个世界变得更加美好。
@@ -53,10 +52,10 @@ PMP认证是由美国项目管理协会（ProjectManagementInstitute，PMI）发
 
 如果您对我的背景或工作感兴趣，或者您有任何项目想要讨论，欢迎通过以下方式联系我：
 
-- 邮箱：1046529973@qq.com
+- 邮箱：<1046529973@qq.com>
 
-- 微信
+- 微信二维码
 
-  ![](https://godx-1327414183.cos.ap-shanghai.myqcloud.com/images/image-20240414151638184.png)
+  <img src="https://godx-1327414183.cos.ap-shanghai.myqcloud.com/images/image-20250417205629505.png" alt="image-20250417205629505" style="zoom:33%;" />
 
 我期待着与您的交流和合作！

@@ -1,8 +1,5 @@
 <template>
-  <canvas
-    ref="canvas"
-    style="position: fixed; left: 0; top: 0; pointer-events: none; z-index: 999999"
-  ></canvas>
+  <canvas ref="canvas" style="position: fixed; left: 0; top: 0; pointer-events: none; z-index: 999999"></canvas>
 </template>
 
 <script setup>
@@ -10,9 +7,9 @@ import { ref, onMounted, onUnmounted } from "vue";
 const canvas = ref(null);
 let ctx = null;
 let particles = [];
-let mouse = { x: globalThis ?.innerWidth / 2, y: globalThis ?.innerHeight / 2 };
-let targetMouse = { x: globalThis ?.innerWidth / 2, y: globalThis ?.innerHeight / 2 };
-let lastMouse = { x: globalThis ?.innerWidth / 2, y: globalThis ?.innerHeight / 2 };
+let mouse = { x: globalThis?.innerWidth / 2, y: globalThis?.innerHeight / 2 };
+let targetMouse = { x: globalThis?.innerWidth / 2, y: globalThis?.innerHeight / 2 };
+let lastMouse = { x: globalThis?.innerWidth / 2, y: globalThis?.innerHeight / 2 };
 let animationFrameId = null;
 // 存储页面中的交互元素
 let interactiveElements = [];
@@ -87,33 +84,33 @@ class Particle {
   // 计算磁力场影响
   calculateMagneticForce() {
     this.magneticInfluence = { x: 0, y: 0 };
-    
+
     for (const element of interactiveElements) {
       const rect = element.getBoundingClientRect();
       const elementCenterX = rect.left + rect.width / 2;
       const elementCenterY = rect.top + rect.height / 2;
-      
+
       // 计算粒子与元素中心的距离
       const dx = this.x - elementCenterX;
       const dy = this.y - elementCenterY;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       // 定义磁力场影响范围
       const influenceRange = 150;
-      
+
       if (distance < influenceRange) {
         // 计算影响强度（距离越近影响越大）
         const force = 1 - distance / influenceRange;
         const attractionFactor = element.dataset.attract === "true" ? -1 : 1;
         const strength = force * force * 5 * attractionFactor; // 调整磁力大小
-        
+
         // 计算方向向量并应用力
         const directionX = dx / distance;
         const directionY = dy / distance;
-        
+
         this.magneticInfluence.x += directionX * strength;
         this.magneticInfluence.y += directionY * strength;
-        
+
         // 粒子靠近元素时改变颜色
         if (distance < influenceRange * 0.5) {
           // 混合粒子原始颜色和元素影响的颜色
@@ -157,19 +154,19 @@ class Particle {
 function collectInteractiveElements() {
   // 清空现有元素
   interactiveElements = [];
-  
+
   // 收集所有按钮
-  const buttons = document.querySelectorAll('button, .VPButton');
-  buttons.forEach(button => {
+  const buttons = document.querySelectorAll("button, .VPButton");
+  buttons.forEach((button) => {
     button.dataset.attract = "true"; // 按钮会吸引粒子
     button.dataset.hue = "220"; // 蓝色调
     interactiveElements.push(button);
   });
-  
+
   // 收集所有链接
-  const links = document.querySelectorAll('a');
-  links.forEach(link => {
-    if (link.classList.contains('active')) {
+  const links = document.querySelectorAll("a");
+  links.forEach((link) => {
+    if (link.classList.contains("active")) {
       link.dataset.attract = "true"; // 活跃链接吸引粒子
       link.dataset.hue = "120"; // 绿色调
     } else {
@@ -178,10 +175,10 @@ function collectInteractiveElements() {
     }
     interactiveElements.push(link);
   });
-  
+
   // 收集其他可交互元素（如表单元素）
-  const formElements = document.querySelectorAll('input, select, textarea');
-  formElements.forEach(element => {
+  const formElements = document.querySelectorAll("input, select, textarea");
+  formElements.forEach((element) => {
     element.dataset.attract = "true"; // 表单元素吸引粒子
     element.dataset.hue = "280"; // 紫色调
     interactiveElements.push(element);
@@ -194,9 +191,7 @@ function updateMousePosition() {
   const dy = targetMouse.y - mouse.y;
 
   // 计算鼠标移动速度
-  const mouseSpeed = Math.sqrt(
-    Math.pow(targetMouse.x - lastMouse.x, 2) + Math.pow(targetMouse.y - lastMouse.y, 2)
-  );
+  const mouseSpeed = Math.sqrt(Math.pow(targetMouse.x - lastMouse.x, 2) + Math.pow(targetMouse.y - lastMouse.y, 2));
 
   // 根据鼠标速度调整跟随速度
   const followSpeed = Math.min(0.15, 0.15 / (1 + mouseSpeed * 0.005));
@@ -236,8 +231,8 @@ function animate() {
 
 function handleResize() {
   if (!canvas.value) return;
-  canvas.value.width = globalThis .innerWidth;
-  canvas.value.height = globalThis .innerHeight;
+  canvas.value.width = globalThis.innerWidth;
+  canvas.value.height = globalThis.innerHeight;
 }
 
 function initParticles() {
@@ -257,23 +252,23 @@ function startElementCollection() {
 }
 
 onMounted(() => {
-  if (typeof globalThis  !== "undefined") {
+  if (typeof globalThis !== "undefined") {
     ctx = canvas.value.getContext("2d");
     handleResize();
     initParticles();
     startElementCollection();
 
-    globalThis .addEventListener("resize", handleResize);
-    globalThis .addEventListener("mousemove", handleMouseMove);
+    globalThis.addEventListener("resize", handleResize);
+    globalThis.addEventListener("mousemove", handleMouseMove);
 
     animate();
   }
 });
 
 onUnmounted(() => {
-  if (typeof globalThis  !== "undefined") {
-    globalThis .removeEventListener("resize", handleResize);
-    globalThis .removeEventListener("mousemove", handleMouseMove);
+  if (typeof globalThis !== "undefined") {
+    globalThis.removeEventListener("resize", handleResize);
+    globalThis.removeEventListener("mousemove", handleMouseMove);
     if (animationFrameId) {
       cancelAnimationFrame(animationFrameId);
     }

@@ -2,22 +2,22 @@
 layout: home
 
 title: Xuan's Blog
-titleTemplate: 个人技术博客
+titleTemplate: 个人博客站点
 
 hero:
   name: Xuan's Blog
   text: "技术分享与生活记录"
   tagline: 记录学习、分享知识、探索技术
   image:
-    src: /logo.png
+    src: https://www.godx.site/s.svg
     alt: Blog Logo
   actions:
     - theme: brand
-      text: 开始阅读
+      text: 开始
       link: /posts/
-    - theme: alt
-      text: GitHub
-      link: https://github.com/xuan
+    # - theme: alt
+    #   text: GitHub
+    #   link: https://github.com/xuan
     - theme: sponsor
       text: 关于我
       link: /intro

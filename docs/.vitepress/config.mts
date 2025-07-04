@@ -3,16 +3,15 @@ import { defineConfig } from "vitepress";
 import markdownItTaskCheckbox from "markdown-it-task-checkbox";
 import { groupIconMdPlugin, groupIconVitePlugin, localIconLoader } from "vitepress-plugin-group-icons";
 import { MermaidMarkdown, MermaidPlugin } from "vitepress-plugin-mermaid";
-import UnoCSS from 'unocss/vite'
-
+import UnoCSS from "unocss/vite";
 
 export default defineConfig({
   lang: "zh-CN",
-  title: "VitePress",
+  title: "烜",
   description: "我的vitpress文档教程",
 
   // #region fav
-  head: [["link", { rel: "icon", href: "/logo.png" }]],
+  head: [["link", { rel: "icon", href: "https://www.godx.site/s.svg" }]],
   // #endregion fav
 
   base: "/",
@@ -95,7 +94,7 @@ export default defineConfig({
   //主题配置
   themeConfig: {
     //左上角logo
-    logo: "/logo.png",
+    logo: "https://www.godx.site/s.svg",
     //logo: 'https://vitejs.cn/vite3-cn/logo-with-shadow.png', //远程引用
     //siteTitle: false, //标题隐藏
 
@@ -133,7 +132,7 @@ export default defineConfig({
             text: "国学经典",
             items: [
               { text: "道德经", link: "/books/classic-chinese/tao-te-ching/index.html" },
-              { text: "论语", link: "/books/classic-chinese/han-feizi/index.html" }
+              { text: "韩非子", link: "/books/classic-chinese/han-feizi/index.html" }
             ]
           },
           {
@@ -143,13 +142,39 @@ export default defineConfig({
         ]
       },
       {
+        text: "博客",
+        link: "/blog/index.md"
+      },
+      {
         text: "导航",
         link: "/nav/"
       },
       {
-        text: "更新日志",
-        link: "/changelog"
-      }
+        text: '考试',
+        items: [
+          {
+            text: 'ACE-CPT',
+            items: [
+              {
+                text: '考试大纲',
+                link: '/exam/ACE-CPT/考试大纲.md'
+              },
+              {
+                text: '私人教练的角色和执业范围',
+                link: '/exam/ACE-CPT/01.md'
+              },
+              {
+                text: 'ACE 整合式健身训练模型',
+                link: '/exam/ACE-CPT/02.md'
+              }
+            ]
+          },
+        ]
+      },
+      // {
+      //   text: "更新日志",
+      //   link: "/changelog"
+      // }
     ],
 
     //侧边栏
@@ -174,13 +199,33 @@ export default defineConfig({
           base: "/books/classic-chinese",
           items: [
             { text: "道德经", link: "/tao-te-ching/index.md" },
-            { text: "论语", link: "/han-feizi/index.md" }
+            { text: "韩非子", link: "/han-feizi/index.md" }
           ]
         },
         {
           text: "参考书籍",
           base: "/books/reference",
           items: [{ text: "海绵阅读法", link: "/sponge-reading-method/index.md" }]
+        }
+      ],
+      exam: [
+        {
+          text: 'ACE-CPT',
+          base: '/exam/ACE-CPT',
+          items: [
+            {
+              text: '考试大纲',
+              link: '/考试大纲.md'
+            },
+            {
+              text: '私人教练的角色和执业范围',
+              link: '/01.md'
+            },
+            {
+              text: 'ACE 整合式健身训练模型',
+              link: '/02.md'
+            }
+          ]
         }
       ]
     },

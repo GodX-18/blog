@@ -7,50 +7,30 @@ export const NAV_DATA: NavData[] = [
       {
         icon: "https://caniuse.com/img/favicon-128.png",
         title: "Can I use",
-        badge: {
-          text: "茂神牛批",
-          type: "info"
-        },
         desc: "前端 API 兼容性查询",
         link: "https://caniuse.com"
       },
       {
         icon: "https://tinypng.com/images/apple-touch-icon.png",
         title: "TinyPNG",
-        badge: {
-          text: "茂神牛批",
-          type: "tip"
-        },
         desc: "在线图片压缩工具",
         link: "https://tinypng.com"
       },
       {
         icon: "https://devtool.tech/logo.svg",
         title: "开发者武器库",
-        badge: {
-          text: "茂神牛批",
-          type: "warning"
-        },
         desc: "开发者武器库，做开发者最专业最好用的专业工具箱",
         link: "https://devtool.tech"
       },
       {
         icon: "https://tool.lu/favicon.ico",
         title: "在线工具",
-        badge: {
-          text: "茂神牛批",
-          type: "danger"
-        },
         desc: "开发人员的工具箱",
         link: "https://tool.lu"
       },
       {
         icon: "/icons/json-cn.ico",
         title: "Json 中文网",
-        badge: {
-          text: "请给茂茂点点小星星哦",
-          type: "info"
-        },
         desc: "JSON 在线解析及格式化验证",
         link: "https://www.json.cn"
       }
@@ -78,35 +58,6 @@ export const NAV_DATA: NavData[] = [
         icon: "https://global-uploads.webflow.com/59deb588800ae30001ec19c9/5d4891e0e260e3c1bc37b100_beautiful%20ai%20favicon%20%20blue%20square.png",
         title: "Beautiful.ai（PPT）",
         link: "https://www.beautiful.ai"
-      }
-    ]
-  },
-  {
-    title: "茂茂的站点导航",
-    items: [
-      {
-        icon: "/logo.png",
-        title: "前端日常笔记",
-        desc: "日常笔记记录（零零散散啥都记系列）",
-        link: "https://github.com/maomao1996/daily-notes"
-      },
-      {
-        icon: "/logo.png",
-        title: "前端思维导图",
-        desc: "用思维导图的方式总结个人所学知识",
-        link: "https://mindmap.fe-mm.com"
-      },
-      {
-        icon: "https://qwerty.fe-mm.com/apple-touch-icon.png",
-        title: "Qwerty Learner",
-        desc: "为键盘工作者设计的单词记忆与英语肌肉记忆锻炼软件",
-        link: "https://qwerty.fe-mm.com"
-      },
-      {
-        icon: "/logo.png",
-        title: "mmPlayer",
-        desc: "mmPlayer 在线音乐播放器",
-        link: "https://netease-music.fe-mm.com"
       }
     ]
   },
@@ -617,6 +568,40 @@ export const NAV_DATA: NavData[] = [
         link: "https://www.pixiv.net"
       }
     ]
+  },
+  {
+    title: "生活助手",
+    items: [
+      {
+        title: "全球地铁线路图与查询指南",
+        link: "https://www.metrolinehub.com/zh",
+        icon: "https://www.metrolinehub.com/favicon.ico",
+        desc: "该网站收集了全球各大城市的地铁地图，并提供查询功能，方便用户查找地铁线路和站点信息"
+      }
+    ]
+  },
+  {
+    title: "学习平台",
+    items: [
+      {
+        title: "Coursera",
+        link: "https://www.coursera.org/",
+        icon: "https://www.coursera.org/favicon.ico",
+        desc: "Coursera 是一个在线学习平台，提供各种课程和学习资源。"
+      },
+      {
+        title: "如是我闻",
+        link: "https://rushiwowen.co/",
+        icon: "https://rushiwowen.co/favicon-32x32.png",
+        desc: "佛经阅读平台，带有 AI 翻译和问答。"
+      },
+      {
+        title: "Z-Library",
+        link: "https://zh.1lib.sk/",
+        icon: "https://zh.1lib.sk/favicon.svg",
+        desc: "一个免费的电子书下载网站，提供各种电子书资源。"
+      }
+    ]
   }
 ];
 
@@ -905,12 +890,18 @@ export const SKILLS_DATA: NavData[] = [
         desc: "Grunt是一个基于Node.js的自动化项目构建工具，用于压缩、编译、测试等重复性任务。",
         link: "https://gruntjs.com/",
         icon: "https://www.gruntjs.net/img/favicons/favicon-32x32.png"
-      },
+      }
     ]
   },
   {
     title: "开发工具",
     items: [
+      {
+        title: "VSCode",
+        desc: "Visual Studio Code 是一个轻量级但功能强大的源代码编辑器，适用于 Windows、macOS 和 Linux。它内置了对 JavaScript、TypeScript 和 Node.js 的支持，并为其他语言（包括 C++、C#、Python、PHP、Go）和运行时（包括 .NET 和 Unity）提供了丰富的支持。",
+        link: "https://code.visualstudio.com/",
+        icon: "https://code.visualstudio.com/favicon.ico"
+      },
       {
         icon: "https://www.cursor.com/favicon.ico",
         title: "Cursor",
@@ -928,6 +919,18 @@ export const SKILLS_DATA: NavData[] = [
         desc: "Git 是一个免费的开源分布式版本控制系统，旨在以速度和效率处理从小型到非常大的项目",
         link: "https://git-scm.com/",
         icon: "https://git-scm.com/favicon.ico"
+      },
+      {
+        title: "Tailwind CSS",
+        desc: "快速构建现代网站，无需离开您的 HTML。",
+        link: "https://tailwindcss.com/",
+        icon: "https://tailwindcss.com/favicon.ico"
+      },
+      {
+        title: "Unocss",
+        desc: "Unocss 是一个原子 CSS 引擎，用于快速构建现代网站和应用程序。",
+        link: "https://unocss.dev/",
+        icon: "https://unocss.dev/favicon.ico"
       },
       {
         title: "Animate.css",
@@ -959,12 +962,7 @@ export const SKILLS_DATA: NavData[] = [
         link: "https://jenkins.io/",
         icon: "https://jenkins.io/favicon.ico"
       },
-      {
-        title: "Vuex",
-        desc: "Vuex 是一个专为 Vue.js 应用程序开发的状态管理模式 + 库。",
-        link: "https://vuex.vuejs.org/zh/",
-        icon: "https://cn.vuejs.org/logo.svg"
-      },
+
       {
         title: "Lodash",
         desc: "一个现代 JavaScript 实用库，提供模块化、性能和额外功能。",
@@ -994,6 +992,12 @@ export const SKILLS_DATA: NavData[] = [
         desc: "开源 Web 富文本编辑器，开箱即用，配置简单",
         link: "https://www.wangeditor.com/",
         icon: "https://www.wangeditor.com/favicon.ico"
+      },
+      {
+        title: "Vuex",
+        desc: "Vuex 是一个专为 Vue.js 应用程序开发的状态管理模式 + 库。",
+        link: "https://vuex.vuejs.org/zh/",
+        icon: "https://cn.vuejs.org/logo.svg"
       },
       {
         icon: "https://pinia.vuejs.org/logo.svg",

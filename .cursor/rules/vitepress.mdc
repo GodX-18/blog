@@ -1,0 +1,20 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# 项目架构
+
+- vitepress + unocss + element-plus
+
+# 开发规范
+  
+- 在 markdown 使用 vue，你可以参照官方文档：https://vitepress.dev/zh/guide/using-vue
+- VitePress 带有内置的 Markdown 扩展。参考文档：https://vitepress.dev/zh/guide/markdown
+- VitePress 提供了几个内置的 API 来让你访问应用程序数据。VitePress 还附带了一些可以在全局范围内使用的内置组件。参考：https://vitepress.dev/zh/reference/runtime-api
+- 开发的组件统一放在 docs/.vitepress/theme/compoents 目录下
+- 遵循组件化开发原则
+- 样式优先使用 unocss，复杂样式可以使用 scss
+  
+

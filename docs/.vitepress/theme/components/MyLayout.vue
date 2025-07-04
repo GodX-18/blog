@@ -5,7 +5,7 @@ import { useData } from "vitepress";
 import DefaultTheme from "vitepress/theme";
 import { nextTick, provide } from "vue";
 import MouseClick from "./MouseClick.vue";
-// import MouseFollower from "./MouseFollower.vue";
+import MouseFollower from "./MouseFollower.vue";
 import backtotop from "./backtotop.vue";
 // import Notice from "./Notice.vue";
 import bsz from "./bsz.vue";
@@ -58,7 +58,7 @@ provide("toggle-appearance", async ({ clientX: x, clientY: y }: MouseEvent) => {
     </template>
     <template #layout-top>
       <!-- <Notice /> -->
-      <!-- <MouseFollower /> -->
+      <MouseFollower />
       <MouseClick />
     </template>
     <template #layout-bottom>

@@ -8,7 +8,7 @@ import "nprogress-v2/dist/index.css";
 import "virtual:group-icons.css"; //代码组样式
 import "./style/index.css"; //自定义样式
 
-import { h } from "vue"; 
+import { h } from "vue";
 import { useData } from "vitepress";
 import { watch } from "vue";
 
@@ -28,6 +28,8 @@ import MyLayout from "./components/MyLayout.vue"; //视图过渡
 import fluidborder from "./components/fluidborder.vue"; //流体边框仅用于演示
 import MouseClick from "./components/MouseClick.vue";
 import MouseFollower from "./components/MouseFollower.vue";
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
 
 // 不蒜子
 import { inBrowser } from "vitepress";
@@ -50,6 +52,7 @@ export default {
     app.component("fluidborder", fluidborder); //流体边框仅用于演示
     app.component("MouseClick", MouseClick); //鼠标跟随组件
     app.component("MouseFollower", MouseFollower); //鼠标跟随组件
+    app.use(ElementPlus)
 
     // 不蒜子
     if (inBrowser) {
