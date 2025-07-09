@@ -7,7 +7,7 @@ titleTemplate: 个人博客站点
 hero:
   name: Xuan's Blog
   text: "技术分享与生活记录"
-  tagline: 记录学习、分享知识、探索技术
+  tagline: 记录学习、分享知识、探索技术.
   image:
     src: https://www.godx.site/s.svg
     alt: Blog Logo
