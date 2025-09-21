@@ -1,292 +1,1404 @@
 <template>
-  <canvas
-    ref="canvas"
-    style="position: fixed; left: 0; top: 0; pointer-events: none; z-index: 999999"
-  ></canvas>
+  <div class="fixed top-0 left-0 z-50 pointer-events-none w-full h-full">
+    <canvas ref="canvasRef" id="fluid" class="w-screen h-screen block"></canvas>
+  </div>
 </template>
 
-<script setup>
-import { ref, onMounted, onUnmounted } from "vue";
-const canvas = ref(null);
-let ctx = null;
-let particles = [];
-let mouse = { x: globalThis ?.innerWidth / 2, y: globalThis ?.innerHeight / 2 };
-let targetMouse = { x: globalThis ?.innerWidth / 2, y: globalThis ?.innerHeight / 2 };
-let lastMouse = { x: globalThis ?.innerWidth / 2, y: globalThis ?.innerHeight / 2 };
-let animationFrameId = null;
-// 存储页面中的交互元素
-let interactiveElements = [];
+<script setup lang="ts">
+import { onMounted, withDefaults, useTemplateRef } from "vue";
 
-class Particle {
-  constructor() {
-    this.reset();
+/* ---------- types ---------- */
+interface ColorRGB {
+  r: number;
+  g: number;
+  b: number;
+}
+
+interface SplashCursorProps {
+  SIM_RESOLUTION?: number;
+  DYE_RESOLUTION?: number;
+  CAPTURE_RESOLUTION?: number;
+  DENSITY_DISSIPATION?: number;
+  VELOCITY_DISSIPATION?: number;
+  PRESSURE?: number;
+  PRESSURE_ITERATIONS?: number;
+  CURL?: number;
+  SPLAT_RADIUS?: number;
+  SPLAT_FORCE?: number;
+  SHADING?: boolean;
+  COLOR_UPDATE_SPEED?: number;
+  BACK_COLOR?: ColorRGB;
+  TRANSPARENT?: boolean;
+}
+
+/* ---------- props & defaults ---------- */
+const props = withDefaults(defineProps<SplashCursorProps>(), {
+  SIM_RESOLUTION: 128,
+  DYE_RESOLUTION: 1440,
+  CAPTURE_RESOLUTION: 512,
+  DENSITY_DISSIPATION: 3.5,
+  VELOCITY_DISSIPATION: 2,
+  PRESSURE: 0.1,
+  PRESSURE_ITERATIONS: 20,
+  CURL: 3,
+  SPLAT_RADIUS: 0.2,
+  SPLAT_FORCE: 6000,
+  SHADING: true,
+  COLOR_UPDATE_SPEED: 10,
+  BACK_COLOR: () => ({ r: 0.5, g: 0, b: 0 }),
+  TRANSPARENT: true,
+});
+
+/* ---------- refs ---------- */
+const canvasRef = useTemplateRef<HTMLCanvasElement>("canvasRef");
+
+/* ---------- helper types ---------- */
+interface Pointer {
+  id: number;
+  texcoordX: number;
+  texcoordY: number;
+  prevTexcoordX: number;
+  prevTexcoordY: number;
+  deltaX: number;
+  deltaY: number;
+  down: boolean;
+  moved: boolean;
+  color: ColorRGB;
+}
+
+function pointerPrototype(): Pointer {
+  return {
+    id: -1,
+    texcoordX: 0,
+    texcoordY: 0,
+    prevTexcoordX: 0,
+    prevTexcoordY: 0,
+    deltaX: 0,
+    deltaY: 0,
+    down: false,
+    moved: false,
+    color: { r: 0, g: 0, b: 0 },
+  };
+}
+
+/* ---------- main logic ---------- */
+onMounted(() => {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+
+  const pointers: Pointer[] = [pointerPrototype()];
+
+  const config = {
+    SIM_RESOLUTION: props.SIM_RESOLUTION!,
+    DYE_RESOLUTION: props.DYE_RESOLUTION!,
+    CAPTURE_RESOLUTION: props.CAPTURE_RESOLUTION!,
+    DENSITY_DISSIPATION: props.DENSITY_DISSIPATION!,
+    VELOCITY_DISSIPATION: props.VELOCITY_DISSIPATION!,
+    PRESSURE: props.PRESSURE!,
+    PRESSURE_ITERATIONS: props.PRESSURE_ITERATIONS!,
+    CURL: props.CURL!,
+    SPLAT_RADIUS: props.SPLAT_RADIUS!,
+    SPLAT_FORCE: props.SPLAT_FORCE!,
+    SHADING: props.SHADING,
+    COLOR_UPDATE_SPEED: props.COLOR_UPDATE_SPEED!,
+    PAUSED: false,
+    BACK_COLOR: props.BACK_COLOR,
+    TRANSPARENT: props.TRANSPARENT,
+  };
+
+  /* ---------- WebGL context helpers ---------- */
+  const { gl, ext } = getWebGLContext(canvas);
+  if (!gl || !ext) return;
+
+  if (!ext.supportLinearFiltering) {
+    config.DYE_RESOLUTION = 256;
+    config.SHADING = false;
   }
 
-  reset() {
-    // 随机角度
-    this.angle = Math.random() * Math.PI * 2;
-    // 更小的随机半径 (15-25)
-    this.radius = Math.random() * 40 + 25;
-    // 随机旋转速度
-    this.speed = (Math.random() * 2 + 2) * 0.01;
-    // 更小的粒子大小 (1-2)
-    this.size = Math.random() * 3 + 1;
-    // 随机颜色
-    this.hue = Math.random() * 360;
-    // 随机方向
-    this.clockwise = Math.random() > 0.5;
-    // 更小的随机偏移
-    this.offsetX = (Math.random() - 0.5) * 10;
-    this.offsetY = (Math.random() - 0.5) * 10;
-    // 生命周期
-    this.life = Math.random() * 0.5 + 0.5;
-    this.maxLife = this.life;
-    // 拖尾效果
-    this.trail = [];
-    this.trailLength = Math.floor(Math.random() * 3) + 2; // 2-4个拖尾点
-    // 磁力影响
-    this.magneticInfluence = { x: 0, y: 0 };
+  function getWebGLContext(canvasEl: HTMLCanvasElement) {
+    const params = {
+      alpha: true,
+      depth: false,
+      stencil: false,
+      antialias: false,
+      preserveDrawingBuffer: false,
+    };
+
+    let gl = canvasEl.getContext("webgl2", params) as WebGL2RenderingContext | null;
+
+    if (!gl) {
+      gl = (canvasEl.getContext("webgl", params) ||
+        canvasEl.getContext(
+          "experimental-webgl",
+          params
+        )) as WebGL2RenderingContext | null;
+    }
+
+    if (!gl) {
+      throw new Error("Unable to initialize WebGL.");
+    }
+
+    const isWebGL2 = "drawBuffers" in gl;
+
+    let supportLinearFiltering = false;
+    let halfFloat: OES_texture_half_float | null = null;
+
+    if (isWebGL2) {
+      (gl as WebGL2RenderingContext).getExtension("EXT_color_buffer_float");
+      supportLinearFiltering = !!(gl as WebGL2RenderingContext).getExtension(
+        "OES_texture_float_linear"
+      );
+    } else {
+      halfFloat = gl.getExtension("OES_texture_half_float");
+      supportLinearFiltering = !!gl.getExtension("OES_texture_half_float_linear");
+    }
+
+    gl.clearColor(0, 0, 0, 1);
+
+    const halfFloatTexType = isWebGL2
+      ? (gl as WebGL2RenderingContext).HALF_FLOAT
+      : (halfFloat && (halfFloat as OES_texture_half_float).HALF_FLOAT_OES) || 0;
+
+    let formatRGBA: { internalFormat: number; format: number } | null;
+    let formatRG: { internalFormat: number; format: number } | null;
+    let formatR: { internalFormat: number; format: number } | null;
+
+    if (isWebGL2) {
+      formatRGBA = getSupportedFormat(
+        gl,
+        (gl as WebGL2RenderingContext).RGBA16F,
+        gl.RGBA,
+        halfFloatTexType
+      );
+      formatRG = getSupportedFormat(
+        gl,
+        (gl as WebGL2RenderingContext).RG16F,
+        (gl as WebGL2RenderingContext).RG,
+        halfFloatTexType
+      );
+      formatR = getSupportedFormat(
+        gl,
+        (gl as WebGL2RenderingContext).R16F,
+        (gl as WebGL2RenderingContext).RED,
+        halfFloatTexType
+      );
+    } else {
+      formatRGBA = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType);
+      formatRG = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType);
+      formatR = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType);
+    }
+
+    return {
+      gl,
+      ext: {
+        formatRGBA,
+        formatRG,
+        formatR,
+        halfFloatTexType,
+        supportLinearFiltering,
+      },
+    };
   }
 
-  update() {
-    // 更新角度
-    this.angle += this.speed * (this.clockwise ? 1 : -1);
-
-    // 计算目标位置
-    const targetX = mouse.x + Math.cos(this.angle) * this.radius + this.offsetX;
-    const targetY = mouse.y + Math.sin(this.angle) * this.radius + this.offsetY;
-
-    // 添加当前位置到拖尾数组
-    if (!this.x) {
-      this.x = targetX;
-      this.y = targetY;
-    }
-
-    // 计算磁力场影响
-    this.calculateMagneticForce();
-
-    // 计算实际移动（添加弹性移动）
-    const dx = targetX - this.x + this.magneticInfluence.x;
-    const dy = targetY - this.y + this.magneticInfluence.y;
-    this.x += dx * 0.15;
-    this.y += dy * 0.15;
-
-    // 更新拖尾
-    this.trail.unshift({ x: this.x, y: this.y });
-    if (this.trail.length > this.trailLength) {
-      this.trail.pop();
-    }
-
-    // 更新生命周期
-    this.life -= 0.002;
-    if (this.life <= 0) {
-      this.reset();
-    }
-  }
-
-  // 计算磁力场影响
-  calculateMagneticForce() {
-    this.magneticInfluence = { x: 0, y: 0 };
-    
-    for (const element of interactiveElements) {
-      const rect = element.getBoundingClientRect();
-      const elementCenterX = rect.left + rect.width / 2;
-      const elementCenterY = rect.top + rect.height / 2;
-      
-      // 计算粒子与元素中心的距离
-      const dx = this.x - elementCenterX;
-      const dy = this.y - elementCenterY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      // 定义磁力场影响范围
-      const influenceRange = 150;
-      
-      if (distance < influenceRange) {
-        // 计算影响强度（距离越近影响越大）
-        const force = 1 - distance / influenceRange;
-        const attractionFactor = element.dataset.attract === "true" ? -1 : 1;
-        const strength = force * force * 5 * attractionFactor; // 调整磁力大小
-        
-        // 计算方向向量并应用力
-        const directionX = dx / distance;
-        const directionY = dy / distance;
-        
-        this.magneticInfluence.x += directionX * strength;
-        this.magneticInfluence.y += directionY * strength;
-        
-        // 粒子靠近元素时改变颜色
-        if (distance < influenceRange * 0.5) {
-          // 混合粒子原始颜色和元素影响的颜色
-          const elementHue = parseInt(element.dataset.hue || 200); // 默认蓝色
-          const blendFactor = force * 2;
-          this.hue = this.hue * (1 - blendFactor) + elementHue * blendFactor;
+  function getSupportedFormat(
+    gl: WebGLRenderingContext | WebGL2RenderingContext,
+    internalFormat: number,
+    format: number,
+    type: number
+  ): { internalFormat: number; format: number } | null {
+    if (!supportRenderTextureFormat(gl, internalFormat, format, type)) {
+      if ("drawBuffers" in gl) {
+        const gl2 = gl as WebGL2RenderingContext;
+        switch (internalFormat) {
+          case gl2.R16F:
+            return getSupportedFormat(gl2, gl2.RG16F, gl2.RG, type);
+          case gl2.RG16F:
+            return getSupportedFormat(gl2, gl2.RGBA16F, gl2.RGBA, type);
+          default:
+            return null;
         }
       }
+      return null;
     }
+    return { internalFormat, format };
   }
 
-  draw() {
-    if (!ctx) return;
-    const alpha = this.life / this.maxLife;
+  function supportRenderTextureFormat(
+    gl: WebGLRenderingContext | WebGL2RenderingContext,
+    internalFormat: number,
+    format: number,
+    type: number
+  ) {
+    const texture = gl.createTexture();
+    if (!texture) return false;
 
-    // 绘制拖尾
-    if (this.trail.length > 1) {
-      ctx.beginPath();
-      ctx.moveTo(this.trail[0].x, this.trail[0].y);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, 4, 4, 0, format, type, null);
 
-      for (let i = 1; i < this.trail.length; i++) {
-        const point = this.trail[i];
-        ctx.lineTo(point.x, point.y);
+    const fbo = gl.createFramebuffer();
+    if (!fbo) return false;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      texture,
+      0
+    );
+    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    return status === gl.FRAMEBUFFER_COMPLETE;
+  }
+
+  function hashCode(s: string) {
+    if (!s.length) return 0;
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) {
+      hash = (hash << 5) - hash + s.charCodeAt(i);
+      hash |= 0;
+    }
+    return hash;
+  }
+
+  function addKeywords(source: string, keywords: string[] | null) {
+    if (!keywords) return source;
+    let keywordsString = "";
+    for (const keyword of keywords) {
+      keywordsString += `#define ${keyword}\n`;
+    }
+    return keywordsString + source;
+  }
+
+  function compileShader(
+    type: number,
+    source: string,
+    keywords: string[] | null = null
+  ): WebGLShader | null {
+    const shaderSource = addKeywords(source, keywords);
+    const shader = gl.createShader(type);
+    if (!shader) return null;
+    gl.shaderSource(shader, shaderSource);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.trace(gl.getShaderInfoLog(shader));
+    }
+    return shader;
+  }
+
+  function createProgram(
+    vertexShader: WebGLShader | null,
+    fragmentShader: WebGLShader | null
+  ): WebGLProgram | null {
+    if (!vertexShader || !fragmentShader) return null;
+    const program = gl.createProgram();
+    if (!program) return null;
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.trace(gl.getProgramInfoLog(program));
+    }
+    return program;
+  }
+
+  function getUniforms(program: WebGLProgram) {
+    const uniforms: Record<string, WebGLUniformLocation | null> = {};
+    const uniformCount = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < uniformCount; i++) {
+      const uniformInfo = gl.getActiveUniform(program, i);
+      if (uniformInfo) {
+        uniforms[uniformInfo.name] = gl.getUniformLocation(program, uniformInfo.name);
       }
-
-      ctx.strokeStyle = `hsla(${this.hue}, 70%, 60%, ${alpha * 0.5})`;
-      ctx.lineWidth = this.size;
-      ctx.lineCap = "round";
-      ctx.stroke();
     }
-
-    // 绘制主粒子
-    ctx.fillStyle = `hsla(${this.hue}, 70%, 60%, ${alpha})`;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
-    ctx.fill();
+    return uniforms;
   }
-}
 
-// 收集页面中的交互式元素
-function collectInteractiveElements() {
-  // 清空现有元素
-  interactiveElements = [];
-  
-  // 收集所有按钮
-  const buttons = document.querySelectorAll('button, .VPButton');
-  buttons.forEach(button => {
-    button.dataset.attract = "true"; // 按钮会吸引粒子
-    button.dataset.hue = "220"; // 蓝色调
-    interactiveElements.push(button);
-  });
-  
-  // 收集所有链接
-  const links = document.querySelectorAll('a');
-  links.forEach(link => {
-    if (link.classList.contains('active')) {
-      link.dataset.attract = "true"; // 活跃链接吸引粒子
-      link.dataset.hue = "120"; // 绿色调
-    } else {
-      link.dataset.attract = "false"; // 普通链接排斥粒子
-      link.dataset.hue = "0"; // 红色调
+  class Program {
+    program: WebGLProgram | null;
+    uniforms: Record<string, WebGLUniformLocation | null>;
+
+    constructor(vertexShader: WebGLShader | null, fragmentShader: WebGLShader | null) {
+      this.program = createProgram(vertexShader, fragmentShader);
+      this.uniforms = this.program ? getUniforms(this.program) : {};
     }
-    interactiveElements.push(link);
-  });
-  
-  // 收集其他可交互元素（如表单元素）
-  const formElements = document.querySelectorAll('input, select, textarea');
-  formElements.forEach(element => {
-    element.dataset.attract = "true"; // 表单元素吸引粒子
-    element.dataset.hue = "280"; // 紫色调
-    interactiveElements.push(element);
-  });
-}
 
-// 平滑跟随鼠标
-function updateMousePosition() {
-  const dx = targetMouse.x - mouse.x;
-  const dy = targetMouse.y - mouse.y;
+    bind() {
+      if (this.program) gl.useProgram(this.program);
+    }
+  }
 
-  // 计算鼠标移动速度
-  const mouseSpeed = Math.sqrt(
-    Math.pow(targetMouse.x - lastMouse.x, 2) + Math.pow(targetMouse.y - lastMouse.y, 2)
+  class Material {
+    vertexShader: WebGLShader | null;
+    fragmentShaderSource: string;
+    programs: Record<number, WebGLProgram | null>;
+    activeProgram: WebGLProgram | null;
+    uniforms: Record<string, WebGLUniformLocation | null>;
+
+    constructor(vertexShader: WebGLShader | null, fragmentShaderSource: string) {
+      this.vertexShader = vertexShader;
+      this.fragmentShaderSource = fragmentShaderSource;
+      this.programs = {};
+      this.activeProgram = null;
+      this.uniforms = {};
+    }
+
+    setKeywords(keywords: string[]) {
+      let hash = 0;
+      for (const kw of keywords) {
+        hash += hashCode(kw);
+      }
+      let program = this.programs[hash];
+      if (program == null) {
+        const fragmentShader = compileShader(
+          gl.FRAGMENT_SHADER,
+          this.fragmentShaderSource,
+          keywords
+        );
+        program = createProgram(this.vertexShader, fragmentShader);
+        this.programs[hash] = program;
+      }
+      if (program === this.activeProgram) return;
+      if (program) {
+        this.uniforms = getUniforms(program);
+      }
+      this.activeProgram = program;
+    }
+
+    bind() {
+      if (this.activeProgram) {
+        gl.useProgram(this.activeProgram);
+      }
+    }
+  }
+
+  /* ---------- shaders ---------- */
+  const baseVertexShader = compileShader(
+    gl.VERTEX_SHADER,
+    `
+      precision highp float;
+      attribute vec2 aPosition;
+      varying vec2 vUv;
+      varying vec2 vL;
+      varying vec2 vR;
+      varying vec2 vT;
+      varying vec2 vB;
+      uniform vec2 texelSize;
+      void main () {
+        vUv = aPosition * 0.5 + 0.5;
+        vL = vUv - vec2(texelSize.x, 0.0);
+        vR = vUv + vec2(texelSize.x, 0.0);
+        vT = vUv + vec2(0.0, texelSize.y);
+        vB = vUv - vec2(0.0, texelSize.y);
+        gl_Position = vec4(aPosition, 0.0, 1.0);
+      }
+    `
   );
 
-  // 根据鼠标速度调整跟随速度
-  const followSpeed = Math.min(0.15, 0.15 / (1 + mouseSpeed * 0.005));
+  const copyShader = compileShader(
+    gl.FRAGMENT_SHADER,
+    `
+      precision mediump float;
+      precision mediump sampler2D;
+      varying highp vec2 vUv;
+      uniform sampler2D uTexture;
+      void main () {
+        gl_FragColor = texture2D(uTexture, vUv);
+      }
+    `
+  );
 
-  mouse.x += dx * followSpeed;
-  mouse.y += dy * followSpeed;
+  const clearShader = compileShader(
+    gl.FRAGMENT_SHADER,
+    `
+      precision mediump float;
+      precision mediump sampler2D;
+      varying highp vec2 vUv;
+      uniform sampler2D uTexture;
+      uniform float value;
+      void main () {
+        gl_FragColor = value * texture2D(uTexture, vUv);
+      }
+    `
+  );
 
-  lastMouse.x = mouse.x;
-  lastMouse.y = mouse.y;
-}
+  const displayShaderSource = `
+      precision highp float;
+      precision highp sampler2D;
+      varying vec2 vUv;
+      varying vec2 vL;
+      varying vec2 vR;
+      varying vec2 vT;
+      varying vec2 vB;
+      uniform sampler2D uTexture;
+      uniform sampler2D uDithering;
+      uniform vec2 ditherScale;
+      uniform vec2 texelSize;
+      vec3 linearToGamma (vec3 color) {
+          color = max(color, vec3(0));
+          return max(1.055 * pow(color, vec3(0.416666667)) - 0.055, vec3(0));
+      }
+      void main () {
+          vec3 c = texture2D(uTexture, vUv).rgb;
+          #ifdef SHADING
+              vec3 lc = texture2D(uTexture, vL).rgb;
+              vec3 rc = texture2D(uTexture, vR).rgb;
+              vec3 tc = texture2D(uTexture, vT).rgb;
+              vec3 bc = texture2D(uTexture, vB).rgb;
+              float dx = length(rc) - length(lc);
+              float dy = length(tc) - length(bc);
+              vec3 n = normalize(vec3(dx, dy, length(texelSize)));
+              vec3 l = vec3(0.0, 0.0, 1.0);
+              float diffuse = clamp(dot(n, l) + 0.7, 0.7, 1.0);
+              c *= diffuse;
+          #endif
+          float a = max(c.r, max(c.g, c.b));
+          gl_FragColor = vec4(c, a);
+      }
+    `;
 
-function handleMouseMove(e) {
-  const rect = canvas.value.getBoundingClientRect();
-  targetMouse.x = e.clientX - rect.left;
-  targetMouse.y = e.clientY - rect.top;
-}
+  const splatShader = compileShader(
+    gl.FRAGMENT_SHADER,
+    `
+      precision highp float;
+      precision highp sampler2D;
+      varying vec2 vUv;
+      uniform sampler2D uTarget;
+      uniform float aspectRatio;
+      uniform vec3 color;
+      uniform vec2 point;
+      uniform float radius;
+      void main () {
+          vec2 p = vUv - point.xy;
+          p.x *= aspectRatio;
+          vec3 splat = exp(-dot(p, p) / radius) * color;
+          vec3 base = texture2D(uTarget, vUv).xyz;
+          gl_FragColor = vec4(base + splat, 1.0);
+      }
+    `
+  );
 
-function animate() {
-  if (!ctx || !canvas.value) return;
-  ctx.clearRect(0, 0, canvas.value.width, canvas.value.height);
+  const advectionShader = compileShader(
+    gl.FRAGMENT_SHADER,
+    `
+      precision highp float;
+      precision highp sampler2D;
+      varying vec2 vUv;
+      uniform sampler2D uVelocity;
+      uniform sampler2D uSource;
+      uniform vec2 texelSize;
+      uniform vec2 dyeTexelSize;
+      uniform float dt;
+      uniform float dissipation;
+      vec4 bilerp (sampler2D sam, vec2 uv, vec2 tsize) {
+          vec2 st = uv / tsize - 0.5;
+          vec2 iuv = floor(st);
+          vec2 fuv = fract(st);
+          vec4 a = texture2D(sam, (iuv + vec2(0.5, 0.5)) * tsize);
+          vec4 b = texture2D(sam, (iuv + vec2(1.5, 0.5)) * tsize);
+          vec4 c = texture2D(sam, (iuv + vec2(0.5, 1.5)) * tsize);
+          vec4 d = texture2D(sam, (iuv + vec2(1.5, 1.5)) * tsize);
+          return mix(mix(a, b, fuv.x), mix(c, d, fuv.x), fuv.y);
+      }
+      void main () {
+          #ifdef MANUAL_FILTERING
+              vec2 coord = vUv - dt * bilerp(uVelocity, vUv, texelSize).xy * texelSize;
+              vec4 result = bilerp(uSource, coord, dyeTexelSize);
+          #else
+              vec2 coord = vUv - dt * texture2D(uVelocity, vUv).xy * texelSize;
+              vec4 result = texture2D(uSource, coord);
+          #endif
+          float decay = 1.0 + dissipation * dt;
+          gl_FragColor = result / decay;
+      }
+    `,
+    ext.supportLinearFiltering ? null : ["MANUAL_FILTERING"]
+  );
 
-  updateMousePosition();
+  const divergenceShader = compileShader(
+    gl.FRAGMENT_SHADER,
+    `
+      precision mediump float;
+      precision mediump sampler2D;
+      varying highp vec2 vUv;
+      varying highp vec2 vL;
+      varying highp vec2 vR;
+      varying highp vec2 vT;
+      varying highp vec2 vB;
+      uniform sampler2D uVelocity;
+      void main () {
+          float L = texture2D(uVelocity, vL).x;
+          float R = texture2D(uVelocity, vR).x;
+          float T = texture2D(uVelocity, vT).y;
+          float B = texture2D(uVelocity, vB).y;
+          vec2 C = texture2D(uVelocity, vUv).xy;
+          if (vL.x < 0.0) { L = -C.x; }
+          if (vR.x > 1.0) { R = -C.x; }
+          if (vT.y > 1.0) { T = -C.y; }
+          if (vB.y < 0.0) { B = -C.y; }
+          float div = 0.5 * (R - L + T - B);
+          gl_FragColor = vec4(div, 0.0, 0.0, 1.0);
+      }
+    `
+  );
 
-  // 随机添加新粒子
-  if (particles.length < 25 && Math.random() < 0.1) {
-    particles.push(new Particle());
+  const curlShader = compileShader(
+    gl.FRAGMENT_SHADER,
+    `
+      precision mediump float;
+      precision mediump sampler2D;
+      varying highp vec2 vUv;
+      varying highp vec2 vL;
+      varying highp vec2 vR;
+      varying highp vec2 vT;
+      varying highp vec2 vB;
+      uniform sampler2D uVelocity;
+      void main () {
+          float L = texture2D(uVelocity, vL).y;
+          float R = texture2D(uVelocity, vR).y;
+          float T = texture2D(uVelocity, vT).x;
+          float B = texture2D(uVelocity, vB).x;
+          float vorticity = R - L - T + B;
+          gl_FragColor = vec4(0.5 * vorticity, 0.0, 0.0, 1.0);
+      }
+    `
+  );
+
+  const vorticityShader = compileShader(
+    gl.FRAGMENT_SHADER,
+    `
+      precision highp float;
+      precision highp sampler2D;
+      varying vec2 vUv;
+      varying vec2 vL;
+      varying vec2 vR;
+      varying vec2 vT;
+      varying vec2 vB;
+      uniform sampler2D uVelocity;
+      uniform sampler2D uCurl;
+      uniform float curl;
+      uniform float dt;
+      void main () {
+          float L = texture2D(uCurl, vL).x;
+          float R = texture2D(uCurl, vR).x;
+          float T = texture2D(uCurl, vT).x;
+          float B = texture2D(uCurl, vB).x;
+          float C = texture2D(uCurl, vUv).x;
+          vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
+          force /= length(force) + 0.0001;
+          force *= curl * C;
+          force.y *= -1.0;
+          vec2 velocity = texture2D(uVelocity, vUv).xy;
+          velocity += force * dt;
+          velocity = min(max(velocity, -1000.0), 1000.0);
+          gl_FragColor = vec4(velocity, 0.0, 1.0);
+      }
+    `
+  );
+
+  const pressureShader = compileShader(
+    gl.FRAGMENT_SHADER,
+    `
+      precision mediump float;
+      precision mediump sampler2D;
+      varying highp vec2 vUv;
+      varying highp vec2 vL;
+      varying highp vec2 vR;
+      varying highp vec2 vT;
+      varying highp vec2 vB;
+      uniform sampler2D uPressure;
+      uniform sampler2D uDivergence;
+      void main () {
+          float L = texture2D(uPressure, vL).x;
+          float R = texture2D(uPressure, vR).x;
+          float T = texture2D(uPressure, vT).x;
+          float B = texture2D(uPressure, vB).x;
+          float C = texture2D(uPressure, vUv).x;
+          float divergence = texture2D(uDivergence, vUv).x;
+          float pressure = (L + R + B + T - divergence) * 0.25;
+          gl_FragColor = vec4(pressure, 0.0, 0.0, 1.0);
+      }
+    `
+  );
+
+  const gradientSubtractShader = compileShader(
+    gl.FRAGMENT_SHADER,
+    `
+      precision mediump float;
+      precision mediump sampler2D;
+      varying highp vec2 vUv;
+      varying highp vec2 vL;
+      varying highp vec2 vR;
+      varying highp vec2 vT;
+      varying highp vec2 vB;
+      uniform sampler2D uPressure;
+      uniform sampler2D uVelocity;
+      void main () {
+          float L = texture2D(uPressure, vL).x;
+          float R = texture2D(uPressure, vR).x;
+          float T = texture2D(uPressure, vT).x;
+          float B = texture2D(uPressure, vB).x;
+          vec2 velocity = texture2D(uVelocity, vUv).xy;
+          velocity.xy -= vec2(R - L, T - B);
+          gl_FragColor = vec4(velocity, 0.0, 1.0);
+      }
+    `
+  );
+
+  /* ---------- geometry helper ---------- */
+  const blit = (() => {
+    const buffer = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]),
+      gl.STATIC_DRAW
+    );
+    const elemBuffer = gl.createBuffer()!;
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elemBuffer);
+    gl.bufferData(
+      gl.ELEMENT_ARRAY_BUFFER,
+      new Uint16Array([0, 1, 2, 0, 2, 3]),
+      gl.STATIC_DRAW
+    );
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(0);
+    return (target: FBO | null, doClear = false) => {
+      if (!gl) return;
+      if (!target) {
+        gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      } else {
+        gl.viewport(0, 0, target.width, target.height);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+      }
+      if (doClear) {
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+      }
+      gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+    };
+  })();
+
+  /* ---------- frame-buffer object helpers ---------- */
+  interface FBO {
+    texture: WebGLTexture;
+    fbo: WebGLFramebuffer;
+    width: number;
+    height: number;
+    texelSizeX: number;
+    texelSizeY: number;
+    attach: (id: number) => number;
   }
 
-  // 更新和绘制所有粒子
-  particles.forEach((particle) => {
-    particle.update();
-    particle.draw();
-  });
-
-  animationFrameId = requestAnimationFrame(animate);
-}
-
-function handleResize() {
-  if (!canvas.value) return;
-  canvas.value.width = globalThis .innerWidth;
-  canvas.value.height = globalThis .innerHeight;
-}
-
-function initParticles() {
-  particles = [];
-  // 初始创建12-15个粒子
-  const initialCount = Math.floor(Math.random() * 4) + 12;
-  for (let i = 0; i < initialCount; i++) {
-    particles.push(new Particle());
+  interface DoubleFBO {
+    width: number;
+    height: number;
+    texelSizeX: number;
+    texelSizeY: number;
+    read: FBO;
+    write: FBO;
+    swap: () => void;
   }
-}
 
-// 定期更新交互元素列表
-function startElementCollection() {
-  collectInteractiveElements();
-  // 每2秒更新一次元素列表，因为页面内容可能会变化
-  setInterval(collectInteractiveElements, 2000);
-}
+  let dye: DoubleFBO;
+  let velocity: DoubleFBO;
+  let divergence: FBO;
+  let curl: FBO;
+  let pressure: DoubleFBO;
 
-onMounted(() => {
-  if (typeof globalThis  !== "undefined") {
-    ctx = canvas.value.getContext("2d");
-    handleResize();
-    initParticles();
-    startElementCollection();
+  const copyProgram = new Program(baseVertexShader, copyShader);
+  const clearProgram = new Program(baseVertexShader, clearShader);
+  const splatProgram = new Program(baseVertexShader, splatShader);
+  const advectionProgram = new Program(baseVertexShader, advectionShader);
+  const divergenceProgram = new Program(baseVertexShader, divergenceShader);
+  const curlProgram = new Program(baseVertexShader, curlShader);
+  const vorticityProgram = new Program(baseVertexShader, vorticityShader);
+  const pressureProgram = new Program(baseVertexShader, pressureShader);
+  const gradienSubtractProgram = new Program(baseVertexShader, gradientSubtractShader);
+  const displayMaterial = new Material(baseVertexShader, displayShaderSource);
 
-    globalThis .addEventListener("resize", handleResize);
-    globalThis .addEventListener("mousemove", handleMouseMove);
-
-    animate();
+  function createFBO(
+    w: number,
+    h: number,
+    internalFormat: number,
+    format: number,
+    type: number,
+    param: number
+  ): FBO {
+    gl.activeTexture(gl.TEXTURE0);
+    const texture = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, param);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, param);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, null);
+    const fbo = gl.createFramebuffer()!;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      texture,
+      0
+    );
+    gl.viewport(0, 0, w, h);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    const texelSizeX = 1 / w;
+    const texelSizeY = 1 / h;
+    return {
+      texture,
+      fbo,
+      width: w,
+      height: h,
+      texelSizeX,
+      texelSizeY,
+      attach(id: number) {
+        gl.activeTexture(gl.TEXTURE0 + id);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        return id;
+      },
+    };
   }
-});
 
-onUnmounted(() => {
-  if (typeof globalThis  !== "undefined") {
-    globalThis .removeEventListener("resize", handleResize);
-    globalThis .removeEventListener("mousemove", handleMouseMove);
-    if (animationFrameId) {
-      cancelAnimationFrame(animationFrameId);
+  function createDoubleFBO(
+    w: number,
+    h: number,
+    internalFormat: number,
+    format: number,
+    type: number,
+    param: number
+  ): DoubleFBO {
+    const fbo1 = createFBO(w, h, internalFormat, format, type, param);
+    const fbo2 = createFBO(w, h, internalFormat, format, type, param);
+    return {
+      width: w,
+      height: h,
+      texelSizeX: fbo1.texelSizeX,
+      texelSizeY: fbo1.texelSizeY,
+      read: fbo1,
+      write: fbo2,
+      swap() {
+        const tmp = this.read;
+        this.read = this.write;
+        this.write = tmp;
+      },
+    };
+  }
+
+  function resizeFBO(
+    target: FBO,
+    w: number,
+    h: number,
+    internalFormat: number,
+    format: number,
+    type: number,
+    param: number
+  ) {
+    const newFBO = createFBO(w, h, internalFormat, format, type, param);
+    copyProgram.bind();
+    if (copyProgram.uniforms.uTexture)
+      gl.uniform1i(copyProgram.uniforms.uTexture, target.attach(0));
+    blit(newFBO, false);
+    return newFBO;
+  }
+
+  function resizeDoubleFBO(
+    target: DoubleFBO,
+    w: number,
+    h: number,
+    internalFormat: number,
+    format: number,
+    type: number,
+    param: number
+  ) {
+    if (target.width === w && target.height === h) return target;
+    target.read = resizeFBO(target.read, w, h, internalFormat, format, type, param);
+    target.write = createFBO(w, h, internalFormat, format, type, param);
+    target.width = w;
+    target.height = h;
+    target.texelSizeX = 1 / w;
+    target.texelSizeY = 1 / h;
+    return target;
+  }
+
+  function initFramebuffers() {
+    const simRes = getResolution(config.SIM_RESOLUTION!);
+    const dyeRes = getResolution(config.DYE_RESOLUTION!);
+    const texType = ext.halfFloatTexType;
+    const rgba = ext.formatRGBA;
+    const rg = ext.formatRG;
+    const r = ext.formatR;
+    const filtering = ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
+    gl.disable(gl.BLEND);
+
+    if (!rgba) return;
+
+    if (!dye) {
+      dye = createDoubleFBO(
+        dyeRes.width,
+        dyeRes.height,
+        rgba.internalFormat,
+        rgba.format,
+        texType,
+        filtering
+      );
+    } else {
+      dye = resizeDoubleFBO(
+        dye,
+        dyeRes.width,
+        dyeRes.height,
+        rgba.internalFormat,
+        rgba.format,
+        texType,
+        filtering
+      );
+    }
+
+    if (!rg) return;
+
+    if (!velocity) {
+      velocity = createDoubleFBO(
+        simRes.width,
+        simRes.height,
+        rg.internalFormat,
+        rg.format,
+        texType,
+        filtering
+      );
+    } else {
+      velocity = resizeDoubleFBO(
+        velocity,
+        simRes.width,
+        simRes.height,
+        rg.internalFormat,
+        rg.format,
+        texType,
+        filtering
+      );
+    }
+
+    if (!r) return;
+
+    divergence = createFBO(
+      simRes.width,
+      simRes.height,
+      r.internalFormat,
+      r.format,
+      texType,
+      gl.NEAREST
+    );
+    curl = createFBO(
+      simRes.width,
+      simRes.height,
+      r.internalFormat,
+      r.format,
+      texType,
+      gl.NEAREST
+    );
+    pressure = createDoubleFBO(
+      simRes.width,
+      simRes.height,
+      r.internalFormat,
+      r.format,
+      texType,
+      gl.NEAREST
+    );
+  }
+
+  function updateKeywords() {
+    const displayKeywords: string[] = [];
+    if (config.SHADING) displayKeywords.push("SHADING");
+    displayMaterial.setKeywords(displayKeywords);
+  }
+
+  function getResolution(resolution: number) {
+    const w = gl.drawingBufferWidth;
+    const h = gl.drawingBufferHeight;
+    const aspectRatio = w / h;
+    const aspect = aspectRatio < 1 ? 1 / aspectRatio : aspectRatio;
+    const min = Math.round(resolution);
+    const max = Math.round(resolution * aspect);
+    if (w > h) {
+      return { width: max, height: min };
+    }
+    return { width: min, height: max };
+  }
+
+  function scaleByPixelRatio(input: number) {
+    const pixelRatio = window.devicePixelRatio || 1;
+    return Math.floor(input * pixelRatio);
+  }
+
+  updateKeywords();
+  initFramebuffers();
+
+  let lastUpdateTime = Date.now();
+  let colorUpdateTimer = 0.0;
+
+  function updateFrame() {
+    const dt = calcDeltaTime();
+    if (resizeCanvas()) initFramebuffers();
+    updateColors(dt);
+    applyInputs();
+    step(dt);
+    render(null);
+    requestAnimationFrame(updateFrame);
+  }
+
+  function calcDeltaTime() {
+    const now = Date.now();
+    let dt = (now - lastUpdateTime) / 1000;
+    dt = Math.min(dt, 0.016666);
+    lastUpdateTime = now;
+    return dt;
+  }
+
+  function resizeCanvas() {
+    const width = scaleByPixelRatio(canvas!.clientWidth);
+    const height = scaleByPixelRatio(canvas!.clientHeight);
+    if (canvas!.width !== width || canvas!.height !== height) {
+      canvas!.width = width;
+      canvas!.height = height;
+      return true;
+    }
+    return false;
+  }
+
+  function updateColors(dt: number) {
+    colorUpdateTimer += dt * config.COLOR_UPDATE_SPEED;
+    if (colorUpdateTimer >= 1) {
+      colorUpdateTimer = wrap(colorUpdateTimer, 0, 1);
+      pointers.forEach((p) => {
+        p.color = generateColor();
+      });
     }
   }
+
+  function applyInputs() {
+    for (const p of pointers) {
+      if (p.moved) {
+        p.moved = false;
+        splatPointer(p);
+      }
+    }
+  }
+
+  /* ---------- simulation step ---------- */
+  function step(dt: number) {
+    gl.disable(gl.BLEND);
+
+    curlProgram.bind();
+    if (curlProgram.uniforms.texelSize) {
+      gl.uniform2f(
+        curlProgram.uniforms.texelSize,
+        velocity.texelSizeX,
+        velocity.texelSizeY
+      );
+    }
+    if (curlProgram.uniforms.uVelocity) {
+      gl.uniform1i(curlProgram.uniforms.uVelocity, velocity.read.attach(0));
+    }
+    blit(curl);
+
+    vorticityProgram.bind();
+    if (vorticityProgram.uniforms.texelSize) {
+      gl.uniform2f(
+        vorticityProgram.uniforms.texelSize,
+        velocity.texelSizeX,
+        velocity.texelSizeY
+      );
+    }
+    if (vorticityProgram.uniforms.uVelocity) {
+      gl.uniform1i(vorticityProgram.uniforms.uVelocity, velocity.read.attach(0));
+    }
+    if (vorticityProgram.uniforms.uCurl) {
+      gl.uniform1i(vorticityProgram.uniforms.uCurl, curl.attach(1));
+    }
+    if (vorticityProgram.uniforms.curl) {
+      gl.uniform1f(vorticityProgram.uniforms.curl, config.CURL);
+    }
+    if (vorticityProgram.uniforms.dt) {
+      gl.uniform1f(vorticityProgram.uniforms.dt, dt);
+    }
+    blit(velocity.write);
+    velocity.swap();
+
+    divergenceProgram.bind();
+    if (divergenceProgram.uniforms.texelSize) {
+      gl.uniform2f(
+        divergenceProgram.uniforms.texelSize,
+        velocity.texelSizeX,
+        velocity.texelSizeY
+      );
+    }
+    if (divergenceProgram.uniforms.uVelocity) {
+      gl.uniform1i(divergenceProgram.uniforms.uVelocity, velocity.read.attach(0));
+    }
+    blit(divergence);
+
+    clearProgram.bind();
+    if (clearProgram.uniforms.uTexture) {
+      gl.uniform1i(clearProgram.uniforms.uTexture, pressure.read.attach(0));
+    }
+    if (clearProgram.uniforms.value) {
+      gl.uniform1f(clearProgram.uniforms.value, config.PRESSURE);
+    }
+    blit(pressure.write);
+    pressure.swap();
+
+    pressureProgram.bind();
+    if (pressureProgram.uniforms.texelSize) {
+      gl.uniform2f(
+        pressureProgram.uniforms.texelSize,
+        velocity.texelSizeX,
+        velocity.texelSizeY
+      );
+    }
+    if (pressureProgram.uniforms.uDivergence) {
+      gl.uniform1i(pressureProgram.uniforms.uDivergence, divergence.attach(0));
+    }
+    for (let i = 0; i < config.PRESSURE_ITERATIONS; i++) {
+      if (pressureProgram.uniforms.uPressure) {
+        gl.uniform1i(pressureProgram.uniforms.uPressure, pressure.read.attach(1));
+      }
+      blit(pressure.write);
+      pressure.swap();
+    }
+
+    gradienSubtractProgram.bind();
+    if (gradienSubtractProgram.uniforms.texelSize) {
+      gl.uniform2f(
+        gradienSubtractProgram.uniforms.texelSize,
+        velocity.texelSizeX,
+        velocity.texelSizeY
+      );
+    }
+    if (gradienSubtractProgram.uniforms.uPressure) {
+      gl.uniform1i(gradienSubtractProgram.uniforms.uPressure, pressure.read.attach(0));
+    }
+    if (gradienSubtractProgram.uniforms.uVelocity) {
+      gl.uniform1i(gradienSubtractProgram.uniforms.uVelocity, velocity.read.attach(1));
+    }
+    blit(velocity.write);
+    velocity.swap();
+
+    advectionProgram.bind();
+    if (advectionProgram.uniforms.texelSize) {
+      gl.uniform2f(
+        advectionProgram.uniforms.texelSize,
+        velocity.texelSizeX,
+        velocity.texelSizeY
+      );
+    }
+    if (!ext.supportLinearFiltering && advectionProgram.uniforms.dyeTexelSize) {
+      gl.uniform2f(
+        advectionProgram.uniforms.dyeTexelSize,
+        velocity.texelSizeX,
+        velocity.texelSizeY
+      );
+    }
+    const velocityId = velocity.read.attach(0);
+    if (advectionProgram.uniforms.uVelocity) {
+      gl.uniform1i(advectionProgram.uniforms.uVelocity, velocityId);
+    }
+    if (advectionProgram.uniforms.uSource) {
+      gl.uniform1i(advectionProgram.uniforms.uSource, velocityId);
+    }
+    if (advectionProgram.uniforms.dt) {
+      gl.uniform1f(advectionProgram.uniforms.dt, dt);
+    }
+    if (advectionProgram.uniforms.dissipation) {
+      gl.uniform1f(advectionProgram.uniforms.dissipation, config.VELOCITY_DISSIPATION);
+    }
+    blit(velocity.write);
+    velocity.swap();
+
+    if (!ext.supportLinearFiltering && advectionProgram.uniforms.dyeTexelSize) {
+      gl.uniform2f(
+        advectionProgram.uniforms.dyeTexelSize,
+        dye.texelSizeX,
+        dye.texelSizeY
+      );
+    }
+    if (advectionProgram.uniforms.uVelocity) {
+      gl.uniform1i(advectionProgram.uniforms.uVelocity, velocity.read.attach(0));
+    }
+    if (advectionProgram.uniforms.uSource) {
+      gl.uniform1i(advectionProgram.uniforms.uSource, dye.read.attach(1));
+    }
+    if (advectionProgram.uniforms.dissipation) {
+      gl.uniform1f(advectionProgram.uniforms.dissipation, config.DENSITY_DISSIPATION);
+    }
+    blit(dye.write);
+    dye.swap();
+  }
+
+  /* ---------- render ---------- */
+  function render(target: FBO | null) {
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
+    drawDisplay(target);
+  }
+
+  function drawDisplay(target: FBO | null) {
+    const width = target ? target.width : gl.drawingBufferWidth;
+    const height = target ? target.height : gl.drawingBufferHeight;
+    displayMaterial.bind();
+    if (config.SHADING && displayMaterial.uniforms.texelSize) {
+      gl.uniform2f(displayMaterial.uniforms.texelSize, 1 / width, 1 / height);
+    }
+    if (displayMaterial.uniforms.uTexture) {
+      gl.uniform1i(displayMaterial.uniforms.uTexture, dye.read.attach(0));
+    }
+    blit(target, false);
+  }
+
+  /* ---------- splats ---------- */
+  function splatPointer(pointer: Pointer) {
+    const dx = pointer.deltaX * config.SPLAT_FORCE;
+    const dy = pointer.deltaY * config.SPLAT_FORCE;
+    splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color);
+  }
+
+  function clickSplat(pointer: Pointer) {
+    const color = generateColor();
+    color.r *= 10;
+    color.g *= 10;
+    color.b *= 10;
+    const dx = 10 * (Math.random() - 0.5);
+    const dy = 30 * (Math.random() - 0.5);
+    splat(pointer.texcoordX, pointer.texcoordY, dx, dy, color);
+  }
+
+  function splat(x: number, y: number, dx: number, dy: number, color: ColorRGB) {
+    splatProgram.bind();
+    if (splatProgram.uniforms.uTarget) {
+      gl.uniform1i(splatProgram.uniforms.uTarget, velocity.read.attach(0));
+    }
+    if (splatProgram.uniforms.aspectRatio) {
+      gl.uniform1f(splatProgram.uniforms.aspectRatio, canvas!.width / canvas!.height);
+    }
+    if (splatProgram.uniforms.point) {
+      gl.uniform2f(splatProgram.uniforms.point, x, y);
+    }
+    if (splatProgram.uniforms.color) {
+      gl.uniform3f(splatProgram.uniforms.color, dx, dy, 0);
+    }
+    if (splatProgram.uniforms.radius) {
+      gl.uniform1f(
+        splatProgram.uniforms.radius,
+        correctRadius(config.SPLAT_RADIUS / 100)!
+      );
+    }
+    blit(velocity.write);
+    velocity.swap();
+
+    if (splatProgram.uniforms.uTarget) {
+      gl.uniform1i(splatProgram.uniforms.uTarget, dye.read.attach(0));
+    }
+    if (splatProgram.uniforms.color) {
+      gl.uniform3f(splatProgram.uniforms.color, color.r, color.g, color.b);
+    }
+    blit(dye.write);
+    dye.swap();
+  }
+
+  function correctRadius(radius: number) {
+    const aspectRatio = canvas!.width / canvas!.height;
+    if (aspectRatio > 1) radius *= aspectRatio;
+    return radius;
+  }
+
+  /* ---------- pointer helpers ---------- */
+  function updatePointerDownData(
+    pointer: Pointer,
+    id: number,
+    posX: number,
+    posY: number
+  ) {
+    pointer.id = id;
+    pointer.down = true;
+    pointer.moved = false;
+    pointer.texcoordX = posX / canvas!.width;
+    pointer.texcoordY = 1 - posY / canvas!.height;
+    pointer.prevTexcoordX = pointer.texcoordX;
+    pointer.prevTexcoordY = pointer.texcoordY;
+    pointer.deltaX = 0;
+    pointer.deltaY = 0;
+    pointer.color = generateColor();
+  }
+
+  function updatePointerMoveData(
+    pointer: Pointer,
+    posX: number,
+    posY: number,
+    color: ColorRGB
+  ) {
+    pointer.prevTexcoordX = pointer.texcoordX;
+    pointer.prevTexcoordY = pointer.texcoordY;
+    pointer.texcoordX = posX / canvas!.width;
+    pointer.texcoordY = 1 - posY / canvas!.height;
+    pointer.deltaX = correctDeltaX(pointer.texcoordX - pointer.prevTexcoordX)!;
+    pointer.deltaY = correctDeltaY(pointer.texcoordY - pointer.prevTexcoordY)!;
+    pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
+    pointer.color = color;
+  }
+
+  function updatePointerUpData(pointer: Pointer) {
+    pointer.down = false;
+  }
+
+  function correctDeltaX(delta: number) {
+    const aspectRatio = canvas!.width / canvas!.height;
+    if (aspectRatio < 1) delta *= aspectRatio;
+    return delta;
+  }
+
+  function correctDeltaY(delta: number) {
+    const aspectRatio = canvas!.width / canvas!.height;
+    if (aspectRatio > 1) delta /= aspectRatio;
+    return delta;
+  }
+
+  /* ---------- color helpers ---------- */
+  function generateColor(): ColorRGB {
+    const c = HSVtoRGB(Math.random(), 1.0, 1.0);
+    c.r *= 0.15;
+    c.g *= 0.15;
+    c.b *= 0.15;
+    return c;
+  }
+
+  function HSVtoRGB(h: number, s: number, v: number): ColorRGB {
+    let r = 0,
+      g = 0,
+      b = 0;
+    const i = Math.floor(h * 6);
+    const f = h * 6 - i;
+    const p = v * (1 - s);
+    const q = v * (1 - f * s);
+    const t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+      case 0:
+        r = v;
+        g = t;
+        b = p;
+        break;
+      case 1:
+        r = q;
+        g = v;
+        b = p;
+        break;
+      case 2:
+        r = p;
+        g = v;
+        b = t;
+        break;
+      case 3:
+        r = p;
+        g = q;
+        b = v;
+        break;
+      case 4:
+        r = t;
+        g = p;
+        b = v;
+        break;
+      case 5:
+        r = v;
+        g = p;
+        b = q;
+        break;
+    }
+    return { r, g, b };
+  }
+
+  function wrap(value: number, min: number, max: number) {
+    const range = max - min;
+    if (range === 0) return min;
+    return ((value - min) % range) + min;
+  }
+
+  /* ---------- input events ---------- */
+  window.addEventListener("mousedown", (e) => {
+    const pointer = pointers[0];
+    const posX = scaleByPixelRatio(e.clientX);
+    const posY = scaleByPixelRatio(e.clientY);
+    updatePointerDownData(pointer, -1, posX, posY);
+    clickSplat(pointer);
+  });
+
+  function handleFirstMouseMove(e: MouseEvent) {
+    const pointer = pointers[0];
+    const posX = scaleByPixelRatio(e.clientX);
+    const posY = scaleByPixelRatio(e.clientY);
+    const color = generateColor();
+    updateFrame();
+    updatePointerMoveData(pointer, posX, posY, color);
+    document.body.removeEventListener("mousemove", handleFirstMouseMove);
+  }
+  document.body.addEventListener("mousemove", handleFirstMouseMove);
+
+  window.addEventListener("mousemove", (e) => {
+    const pointer = pointers[0];
+    const posX = scaleByPixelRatio(e.clientX);
+    const posY = scaleByPixelRatio(e.clientY);
+    const color = pointer.color;
+    updatePointerMoveData(pointer, posX, posY, color);
+  });
+
+  function handleFirstTouchStart(e: TouchEvent) {
+    const touches = e.targetTouches;
+    const pointer = pointers[0];
+    for (let i = 0; i < touches.length; i++) {
+      const posX = scaleByPixelRatio(touches[i].clientX);
+      const posY = scaleByPixelRatio(touches[i].clientY);
+      updateFrame();
+      updatePointerDownData(pointer, touches[i].identifier, posX, posY);
+    }
+    document.body.removeEventListener("touchstart", handleFirstTouchStart);
+  }
+  document.body.addEventListener("touchstart", handleFirstTouchStart);
+
+  window.addEventListener(
+    "touchstart",
+    (e) => {
+      const touches = e.targetTouches;
+      const pointer = pointers[0];
+      for (let i = 0; i < touches.length; i++) {
+        const posX = scaleByPixelRatio(touches[i].clientX);
+        const posY = scaleByPixelRatio(touches[i].clientY);
+        updatePointerDownData(pointer, touches[i].identifier, posX, posY);
+      }
+    },
+    false
+  );
+
+  window.addEventListener(
+    "touchmove",
+    (e) => {
+      const touches = e.targetTouches;
+      const pointer = pointers[0];
+      for (let i = 0; i < touches.length; i++) {
+        const posX = scaleByPixelRatio(touches[i].clientX);
+        const posY = scaleByPixelRatio(touches[i].clientY);
+        updatePointerMoveData(pointer, posX, posY, pointer.color);
+      }
+    },
+    false
+  );
+
+  window.addEventListener("touchend", (e) => {
+    const touches = e.changedTouches;
+    const pointer = pointers[0];
+    for (let i = 0; i < touches.length; i++) {
+      updatePointerUpData(pointer);
+    }
+  });
 });
 </script>
-
-<style scoped>
-canvas {
-  pointer-events: none;
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: 999999;
-}
-</style>

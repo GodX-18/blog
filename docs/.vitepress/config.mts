@@ -69,6 +69,12 @@ export default defineConfig({
       host: true,
       open: false
     },
+    resolve: {
+      alias: {
+        '@component': new URL('./theme/components', import.meta.url).pathname,
+        '@': new URL('../', import.meta.url).pathname
+      }
+    },
     plugins: [
       UnoCSS(),
       groupIconVitePlugin({
@@ -149,28 +155,32 @@ export default defineConfig({
         text: "导航",
         link: "/nav/"
       },
+      // {
+      //   text: "复盘",
+      //   link: "/review/index.md"
+      // },
       {
-        text: '考试',
+        text: "考试",
         items: [
           {
-            text: 'ACE-CPT',
+            text: "ACE-CPT",
             items: [
               {
-                text: '考试大纲',
-                link: '/exam/ACE-CPT/考试大纲.md'
+                text: "考试大纲",
+                link: "/exam/ACE-CPT/考试大纲.md"
               },
               {
-                text: '私人教练的角色和执业范围',
-                link: '/exam/ACE-CPT/01.md'
+                text: "私人教练的角色和执业范围",
+                link: "/exam/ACE-CPT/01.md"
               },
               {
-                text: 'ACE 整合式健身训练模型',
-                link: '/exam/ACE-CPT/02.md'
+                text: "ACE 整合式健身训练模型",
+                link: "/exam/ACE-CPT/02.md"
               }
             ]
-          },
+          }
         ]
-      },
+      }
       // {
       //   text: "更新日志",
       //   link: "/changelog"
@@ -210,21 +220,124 @@ export default defineConfig({
       ],
       exam: [
         {
-          text: 'ACE-CPT',
-          base: '/exam/ACE-CPT',
+          text: "ACE-CPT",
+          base: "/exam/ACE-CPT",
           items: [
             {
-              text: '考试大纲',
-              link: '/考试大纲.md'
+              text: "考试大纲",
+              link: "/考试大纲.md"
             },
             {
-              text: '私人教练的角色和执业范围',
-              link: '/01.md'
+              text: "私人教练的角色和执业范围",
+              link: "/01.md"
             },
             {
-              text: 'ACE 整合式健身训练模型',
-              link: '/02.md'
+              text: "ACE 整合式健身训练模型",
+              link: "/02.md"
             }
+          ]
+        }
+      ],
+      review: [
+        {
+          text: "复盘",
+          base: "/review",
+          items: [{ text: "复盘", link: "/index.md" }]
+        },
+        {
+          text: "2025",
+          link: "/index.md",
+          base: "/review/2025",
+          items: [
+            {
+              text: "7月",
+              link: "/7/index.md",
+              items: [
+                {
+                  text: "第二周",
+                  link: "/7/week2/index.md",
+                  items: [
+                    {
+                      text: "9号",
+                      link: "/7/week2/9.md"
+                    },
+                    {
+                      text: "10号",
+                      link: "/7/week2/10.md"
+                    },
+                  ]
+                },
+                {
+                  text: "第三周",
+                  link: "/7/week3/index.md",
+                  items: [
+                      {
+                        text: "15号",
+                        link: "/7/week3/15.md"
+                      },
+                      {
+                        text: "16号",
+                        link: "/7/week3/16.md"
+                      }
+                  ]
+                },
+                {
+                  text: "第四周",
+                  link: "/7/week4/index.md",
+                  items: [
+                    {
+                      text: "28号",
+                      link: "/7/week4/28.md"
+                    },
+                    {
+                      text: "29号",
+                      link: "/7/week4/29.md"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              text: "8月",
+              link: "/8/index.md",
+              items: [
+                {
+                  text: "6号",
+                  link: "/8/6.md"
+                },
+                {
+                  text: "7号",
+                  link: "/8/7.md"
+                },
+                {
+                  text: "10号",
+                  link: "/8/10.md"
+                },
+                {
+                  text: "12号",
+                  link: "/8/12.md"
+                },
+                {
+                  text: "17号",
+                  link: "/8/17.md"
+                },
+                {
+                  text: "27号",
+                  link: "/8/27.md"
+                }
+              ]
+            },
+            {
+              text: "9月",
+              link: "/9/index.md",
+              items: [
+                {
+                  text: "10号",
+                  link: "/9/10.md"
+                }
+              ]
+            },
+            
           ]
         }
       ]
@@ -324,5 +437,36 @@ export default defineConfig({
       prev: "上一页",
       next: "下一页"
     }
+
+    //文档加密配置
+    // encrypt: {
+    //   // 全局默认密码（可选）
+    //   globalPassword: "123456",
+
+    //   // 具体页面或目录的密码配置
+    //   rules: [
+    //     {
+    //       // 支持精确路径匹配
+    //       path: "/books/personal-growth/cognitive-awakening/",
+    //       password: "cognitive123"
+    //     },
+    //     {
+    //       // 支持通配符匹配
+    //       path: "/exam/ACE-CPT/*",
+    //       password: "ace2024"
+    //     },
+    //     {
+    //       // 支持目录级别加密
+    //       path: "/books/reference/",
+    //       password: "reference456",
+    //       recursive: true  // 递归加密子页面
+    //     },
+    //     {
+    //       // 测试页面
+    //       path: "/test-encrypt.html",
+    //       password: "test123"
+    //     }
+    //   ]
+    // }
   }
-});
+} as any);

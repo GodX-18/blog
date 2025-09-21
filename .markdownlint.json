@@ -1,0 +1,30 @@
+{
+  "MD033": {
+    "allowed_elements": [
+      "TextType",
+      "Home",
+      "ArticleMetadata", 
+      "Linkcard",
+      "BlogCard",
+      "confetti",
+      "backtotop",
+      "ImagePreview",
+      "Notice",
+      "TagCloud",
+      "RecentPosts",
+      "HomeUnderline",
+      "DataPanel",
+      "div",
+      "span",
+      "br",
+      "script",
+      "style",
+      "iframe",
+      "img",
+      "video",
+      "audio"
+    ]
+  },
+  "MD013": false,
+  "MD041": false
+}

@@ -172,22 +172,26 @@ onMounted(() => {
     },
   });
 
-  document.addEventListener(
-    tap,
-    function (e) {
-      render.play();
-      updateCoords(e);
-      animateParticules(pointerX, pointerY);
-      createRandomCircleAnimation(pointerX, pointerY); // 添加随机圆形动画
-    },
-    false
-  );
+  // 处理点击事件的函数
+  function handleTap(e) {
+    render.play();
+    updateCoords(e);
+    animateParticules(pointerX, pointerY);
+    createRandomCircleAnimation(pointerX, pointerY); // 添加随机圆形动画
+  }
+
+  document.addEventListener(tap, handleTap, false);
 
   setCanvasSize();
   globalThis.addEventListener("resize", setCanvasSize, false);
 });
 
 onUnmounted(() => {
+  const tap =
+    "ontouchstart" in globalThis || navigator.msMaxTouchPoints
+      ? "touchstart"
+      : "mousedown";
+  
   globalThis.removeEventListener("resize", setCanvasSize);
   document.removeEventListener(tap, handleTap);
 });

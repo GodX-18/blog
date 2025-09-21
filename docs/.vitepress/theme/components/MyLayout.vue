@@ -11,8 +11,7 @@ import backtotop from "./backtotop.vue";
 import bsz from "./bsz.vue";
 import ImagePreview from "./ImagePreview.vue";
 import Waline from "./Waline.vue";
-
-
+import EncryptGuard from "./EncryptGuard.vue";
 
 const { isDark } = useData();
 
@@ -51,23 +50,40 @@ provide("toggle-appearance", async ({ clientX: x, clientY: y }: MouseEvent) => {
 </script>
 
 <template>
-  <DefaultTheme.Layout v-bind="$attrs">
-    <template #doc-footer-before>
-      <backtotop />
-      <ImagePreview />
-    </template>
-    <template #layout-top>
-      <!-- <Notice /> -->
-      <MouseFollower />
-      <MouseClick />
-    </template>
-    <template #layout-bottom>
-      <bsz />
-    </template>
-    <template #doc-after>
-      <Waline />
-    </template>
-  </DefaultTheme.Layout>
+  <EncryptGuard>
+    <DefaultTheme.Layout v-bind="$attrs">
+      <template #doc-footer-before>
+        <backtotop />
+        <ImagePreview />
+      </template>
+      <template #layout-top>
+        <!-- <Notice /> -->
+        <MouseFollower
+          :SIM_RESOLUTION="128"
+          :DYE_RESOLUTION="1440"
+          :CAPTURE_RESOLUTION="512"
+          :DENSITY_DISSIPATION="3.5"
+          :VELOCITY_DISSIPATION="2"
+          :PRESSURE="0.1"
+          :PRESSURE_ITERATIONS="20"
+          :CURL="3"
+          :SPLAT_RADIUS="0.2"
+          :SPLAT_FORCE="6000"
+          :SHADING="true"
+          :COLOR_UPDATE_SPEED="10"
+          :BACK_COLOR="{ r: 0.5, g: 0, b: 0 }"
+          :TRANSPARENT="true"
+        />
+        <MouseClick />
+      </template>
+      <template #layout-bottom>
+        <!-- <bsz /> -->
+      </template>
+      <template #doc-after>
+        <Waline />
+      </template>
+    </DefaultTheme.Layout>
+  </EncryptGuard>
 </template>
 
 <style>

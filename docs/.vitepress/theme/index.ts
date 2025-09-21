@@ -14,8 +14,7 @@ import { watch } from "vue";
 
 import "virtual:uno.css";
 
-// element-plus
-import "element-plus/dist/index.css";
+
 
 // 组件
 import MNavLinks from "./components/MNavLinks.vue"; //导航
@@ -28,8 +27,8 @@ import MyLayout from "./components/MyLayout.vue"; //视图过渡
 import fluidborder from "./components/fluidborder.vue"; //流体边框仅用于演示
 import MouseClick from "./components/MouseClick.vue";
 import MouseFollower from "./components/MouseFollower.vue";
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
+
+
 
 // 不蒜子
 import { inBrowser } from "vitepress";
@@ -52,8 +51,10 @@ export default {
     app.component("fluidborder", fluidborder); //流体边框仅用于演示
     app.component("MouseClick", MouseClick); //鼠标跟随组件
     app.component("MouseFollower", MouseFollower); //鼠标跟随组件
-    app.use(ElementPlus)
+    
 
+
+    
     // 不蒜子
     if (inBrowser) {
       NProgress.configure({ showSpinner: false });
