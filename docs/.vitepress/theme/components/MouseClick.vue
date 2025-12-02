@@ -7,7 +7,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
-import anime from "animejs";
+import { animate, createTimeline, random } from "animejs";
 const canvas = ref(null);
 
 onMounted(() => {
@@ -39,9 +39,9 @@ onMounted(() => {
 
   // 设置粒子的运动方向
   function setParticuleDirection(p) {
-    const angle = (anime.random(0, 360) * Math.PI) / 180;
-    const value = anime.random(20, 90);
-    const radius = [-1, 1][anime.random(0, 1)] * value;
+    const angle = (random(0, 360) * Math.PI) / 180;
+    const value = random(20, 90);
+    const radius = [-1, 1][random(0, 1)] * value;
     return {
       x: p.x + radius * Math.cos(angle),
       y: p.y + radius * Math.sin(angle),
@@ -53,8 +53,8 @@ onMounted(() => {
     const p = {};
     p.x = x;
     p.y = y;
-    p.color = colors[anime.random(0, colors.length - 1)];
-    p.radius = anime.random(8, 16);
+    p.color = colors[random(0, colors.length - 1)];
+    p.radius = random(8, 16);
     p.endPos = setParticuleDirection(p);
     p.draw = function () {
       ctx.beginPath();
@@ -87,9 +87,15 @@ onMounted(() => {
   }
 
   // 渲染粒子
-  function renderParticule(anim) {
-    for (let i = 0; i < anim.animatables.length; i++) {
-      anim.animatables[i].target.draw();
+  function renderParticule(targets) {
+    if (Array.isArray(targets)) {
+      for (let i = 0; i < targets.length; i++) {
+        if (targets[i] && targets[i].draw) {
+          targets[i].draw();
+        }
+      }
+    } else if (targets && targets.draw) {
+      targets.draw();
     }
   }
 
@@ -100,10 +106,8 @@ onMounted(() => {
     for (let i = 0; i < numberOfParticules; i++) {
       particules.push(createParticule(x, y));
     }
-    anime
-      .timeline()
-      .add({
-        targets: particules,
+    createTimeline()
+      .add(particules, {
         x: function (p) {
           return p.endPos.x;
         },
@@ -111,30 +115,29 @@ onMounted(() => {
           return p.endPos.y;
         },
         radius: 0.1,
-        duration: anime.random(1200, 1800),
+        duration: random(1200, 1800),
         easing: "easeOutExpo",
-        update: renderParticule,
+        update: () => renderParticule(particules),
       })
-      .add({
-        targets: circle,
-        radius: anime.random(80, 160),
+      .add(circle, {
+        radius: random(80, 160),
         lineWidth: 0,
         alpha: {
           value: 0,
           easing: "linear",
-          duration: anime.random(600, 800),
+          duration: random(600, 800),
         },
-        duration: anime.random(1200, 1800),
+        duration: random(1200, 1800),
         easing: "easeOutExpo",
-        update: renderParticule,
+        update: () => renderParticule(circle),
         offset: 0,
       });
   }
 
   // 创建随机圆形动画
   function createRandomCircleAnimation(x, y) {
-    const randomSize = anime.random(50, 90);
-    const randomColor = colors[anime.random(0, colors.length - 1)];
+    const randomSize = random(50, 90);
+    const randomColor = colors[random(0, colors.length - 1)];
 
     const circle = {
       x: x,
@@ -152,8 +155,7 @@ onMounted(() => {
       },
     };
 
-    anime({
-      targets: circle,
+    animate(circle, {
       radius: randomSize,
       alpha: 0,
       duration: 1000,
@@ -165,12 +167,15 @@ onMounted(() => {
   }
 
   // 渲染动画
-  const render = anime({
-    duration: Infinity,
-    update: function () {
-      ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-    },
-  });
+  const render = animate(
+    {},
+    {
+      duration: Infinity,
+      update: function () {
+        ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+      },
+    }
+  );
 
   // 处理点击事件的函数
   function handleTap(e) {
@@ -191,7 +196,7 @@ onUnmounted(() => {
     "ontouchstart" in globalThis || navigator.msMaxTouchPoints
       ? "touchstart"
       : "mousedown";
-  
+
   globalThis.removeEventListener("resize", setCanvasSize);
   document.removeEventListener(tap, handleTap);
 });

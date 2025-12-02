@@ -74,7 +74,7 @@ provide("toggle-appearance", async ({ clientX: x, clientY: y }: MouseEvent) => {
           :BACK_COLOR="{ r: 0.5, g: 0, b: 0 }"
           :TRANSPARENT="true"
         />
-        <MouseClick />
+        <!-- <MouseClick /> -->
       </template>
       <template #layout-bottom>
         <!-- <bsz /> -->

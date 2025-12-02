@@ -1,8 +1,7 @@
 node_modules 
-cache 
 dist 
 cache 
 dist 
 .vercel
 .DS_Store
-/docs/.vitepress/cache
+docs/.vitepress/cache
